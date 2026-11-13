@@ -39,8 +39,8 @@ npm run sim          # try it with a simulated car: http://localhost:1991
 With real hardware:
 
 1. Build the adapter: [docs/wiring.md](docs/wiring.md)
-2. Upload `firmware/dsm_bridge/dsm_bridge.ino` with the Arduino IDE
-   (set `WIRING_12V`, `WIRING_5V` or `WIRING_INVERTED` to match step 1 of the wiring guide)
+2. Upload the bridge with the wiring from step 1 of the wiring guide:
+   `npm run fw -- bridge --wiring 12v` (or `5v`, `inverted`). The Arduino IDE also works.
 3. `npm run dashboard` and open http://localhost:1991
    (for the E935: `npm run dashboard:e935`)
 4. Plug in the Arduino, connect it to the car, ignition on
@@ -56,12 +56,14 @@ A terminal tester is also included: `npm run cli -- /dev/ttyUSB0`.
 | `src/server/` | Dashboard server: adapter discovery, request queue, simulation |
 | `web/` | Dashboard page |
 | `src/cli.ts` | Terminal tester |
+| `src/verify.ts` | Live table of E935 candidate addresses, for verification |
+| `src/fw.ts` | Compiles and uploads a firmware (`npm run fw`) |
 | `firmware/dsm_bridge/` | Arduino bridge (bit-banged 1953 baud, 5 V, 12 V or inverted wiring) |
 | `firmware/voltcheck/` | Measures the diagnostic line voltage |
-| `firmware/sniffer/` | Logs every edge on the line, for an ECU that does not reply |
+| `firmware/sniffer/` | Logs every edge on the line, and reads E935 candidates live |
 | `docs/` | Wiring, protocol, E935 notes |
 | `hardware/` | Roadmap for a standalone USB cable |
-| `test/` | Bridge firmware simulation against a virtual ECU |
+| `test/` | Bridge and sniffer firmware simulations against a virtual ECU |
 
 ## Safety
 

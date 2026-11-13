@@ -10,8 +10,10 @@ dsm-diag reads live data and fault codes from 1G DSM ECUs over the 12-pin diagno
 | `npm run dashboard` | Dashboard with a real adapter. Add `-- --port /dev/ttyUSB0` to skip auto-detection. |
 | `npm run dashboard:e935`, `npm run sim:e935` | The same with the E935 profile |
 | `npm run cli -- /dev/ttyUSB0` | Terminal tester. Add `--e935` for the E935 profile. |
+| `npm run verify -- 06,3A` | Live table of E935 candidate addresses. Needs the sniffer on the Uno. |
+| `npm run fw -- sniffer`, `npm run fw -- bridge --wiring inverted` | Compile and upload a firmware |
 | `npm test` | Type-check and protocol self-test |
-| `npm run test:bridge` | Compile `test/bridge-sim.cpp` with g++ and run it for 5 V, 12 V and inverted wiring |
+| `npm run test:bridge` | Compile `test/bridge-sim.cpp` with g++ and run it for 5 V, 12 V and inverted wiring, then run `test/sniffer-sim.cpp` |
 
 CI runs `typecheck`, `selftest` and `test:bridge`. Run all three before a PR. Set `PORT` to change the HTTP port.
 
@@ -25,7 +27,7 @@ CI runs `typecheck`, `selftest` and `test:bridge`. Run all three before a PR. Se
 - `src/server/sim.ts` supplies the simulated adapter and ECU for `--sim`.
 - `firmware/dsm_bridge/dsm_bridge.ino` bit-bangs 1953.125 baud. It forwards bytes transparently, so the TypeScript side keeps `echo: true`.
 - `WIRING_INVERTED` handles the E935 polarity in firmware. `Link` and the CLI select the E935 profile with `--e935`.
-- `firmware/sniffer/sniffer.ino` logs every edge on the line. Use it to verify an address before you add it.
+- `firmware/sniffer/sniffer.ino` logs every edge on the line, and its live mode drives `npm run verify`. Use it to verify an address before you add it.
 - `test/bridge-sim.cpp` includes the `.ino` directly and runs it against a virtual clock and fake ECU. Keep the firmware compilable as plain C++.
 
 ## Safety rules
@@ -38,7 +40,8 @@ The tool is read-only by design. Keep these guards in place:
 
 The E935 profile adds an allowlist. [docs/e935.md](docs/e935.md#allowlist) owns the list and the rules to extend it.
 
-- Keep both gates: `allowed()` in `dsm_bridge.ino` (`WIRING_INVERTED`) and `E935_ALLOWED` in `src/mmcd.ts`. They must list the same addresses.
+- Keep both gates: `allowed()` in `dsm_bridge.ino` (`WIRING_INVERTED`) and `E935_ALLOWED` in `src/mmcd.ts`. They must list the same addresses. The self-test checks this.
+- The sniffer sends only `CANDIDATES`. They must match `E935_CANDIDATES`, which derives them from the bit-error rule. The self-test checks this too.
 - Never add an address that is not verified on the car, or that is fewer than two bit errors from 0xCA, 0xF1–0xFC, 0xFE or 0xFF.
 - Keep the misread abort. The bridge locks itself and answers with an inverted echo; `isBridgeAbort()` halts the software. Do not retry or resume after it.
 - Explore, RAM dumps, address reads and Clear codes stay off in the E935 profile until the E935 map is verified.
