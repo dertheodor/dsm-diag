@@ -57,6 +57,24 @@ export const isBridgeAbort = (e: unknown): e is ProtocolError =>
  */
 export const E935_ALLOWED: ReadonlySet<number> = new Set([0x07, 0x14, 0x17, 0x21, 0x38, 0x39, 0x3b, 0x3c]);
 
+/** Addresses that change ECU state on US ECUs: clear codes, actuator tests, strapping. */
+export const isBlocked = (addr: number) => addr === 0xca || (addr >= 0xf1 && addr <= 0xfc) || addr >= 0xfe;
+
+/** Smallest number of bit errors that turns addr into a blocked address. */
+export function bitErrorsToBlocked(addr: number): number {
+  let min = 8;
+  for (let b = 0; b <= 0xff; b++) {
+    if (!isBlocked(b)) continue;
+    let x = addr ^ b, n = 0;
+    for (; x; x &= x - 1) n++;
+    min = Math.min(min, n);
+  }
+  return min;
+}
+
+/** The safety rule for every E935 request: at least this many bit errors from a blocked address. */
+export const MIN_BIT_ERRORS = 2;
+
 export interface EcuOptions {
   echo: boolean;
   timeoutMs: number;
@@ -217,3 +235,34 @@ export function decodeFaults(word: number): Fault[] {
 }
 
 export const hex = (n: number) => n.toString(16).padStart(2, '0').toUpperCase();
+
+/* ------------------------------------------------------------- E935 */
+
+/**
+ * Addresses that may be verified on the E935 with firmware/sniffer: every US sensor,
+ * flag and fault address that meets MIN_BIT_ERRORS. CANDIDATES in the sniffer
+ * firmware must list the same addresses; the self-test checks this.
+ */
+export const E935_CANDIDATES: ReadonlySet<number> = new Set(
+  [...SENSORS.map((s) => s.addr), ...Object.keys(FLAGS).map(Number), 0x38, 0x39, 0x3b, 0x3c]
+    .filter((a) => bitErrorsToBlocked(a) >= MIN_BIT_ERRORS)
+    .sort((a, b) => a - b),
+);
+
+export type VerifyStatus = 'confirmed' | 'plausible';
+
+/**
+ * How far each allowed E935 address is verified. docs/e935.md holds the evidence.
+ *   confirmed  matches an independent measurement
+ *   plausible  live and sensible, but the scaling is not checked yet
+ */
+export const E935_STATUS: ReadonlyMap<number, VerifyStatus> = new Map([
+  [0x14, 'confirmed'],
+  [0x17, 'confirmed'],
+  [0x21, 'confirmed'],
+  [0x07, 'plausible'],
+  [0x38, 'plausible'],
+  [0x39, 'plausible'],
+  [0x3b, 'plausible'],
+  [0x3c, 'plausible'],
+]);
