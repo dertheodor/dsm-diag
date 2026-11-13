@@ -13,6 +13,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { build } from 'esbuild';
+import { E935_STATUS } from '../mmcd.js';
 import { Link } from './link.js';
 
 const args = process.argv.slice(2);
@@ -68,7 +69,7 @@ function openEvents(res: ServerResponse) {
   const meta = {
     sim,
     e935,
-    sensors: link.sensors.map(({ id, name, addr, unit }) => ({ id, name, addr, unit })),
+    sensors: link.sensors.map(({ id, name, addr, unit }) => ({ id, name, addr, unit, status: e935 ? E935_STATUS.get(addr) : undefined })),
     flags: link.flags,
     poll: [...link.pollIds],
     rawMap: link.rawMap,

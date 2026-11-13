@@ -8,7 +8,7 @@ type LinkState =
   | { phase: 'online'; path: string; version: { raw: number; cpu: string } | null }
   | { phase: 'halted'; path: string; detail: string };
 
-interface SensorMeta { id: string; name: string; addr: number; unit: string }
+interface SensorMeta { id: string; name: string; addr: number; unit: string; status?: 'confirmed' | 'plausible' }
 interface Meta { sim: boolean; e935: boolean; sensors: SensorMeta[]; flags: Record<string, Record<string, string>>; poll: string[]; rawMap: boolean }
 interface Sample { t: number; values: Record<string, { raw: number; value: number }>; reqPerSec: number }
 interface Fault { code: number; name: string }
@@ -135,7 +135,7 @@ function buildSensorRows(m: Meta) {
     tr.className = m.poll.includes(s.id) ? '' : 'idle';
     tr.innerHTML = `
       <td><input type="checkbox" aria-label="Poll ${s.name}" ${m.poll.includes(s.id) ? 'checked' : ''}></td>
-      <td><span class="name"></span></td>
+      <td><span class="name"></span>${badge(s)}</td>
       <td class="val num"><span class="n">–</span><span class="unit"></span></td>
       <td class="raw num" title="Address 0x${hex2(s.addr)}">–</td>
       <td><svg viewBox="0 0 120 22" preserveAspectRatio="none" aria-hidden="true"><polyline points=""/></svg></td>`;
@@ -144,6 +144,13 @@ function buildSensorRows(m: Meta) {
     tr.querySelector('input')!.addEventListener('change', sendPollSelection);
     tbody.append(tr);
   }
+}
+
+/** E935 profile: how far the address is verified (docs/e935.md). */
+function badge(s: SensorMeta): string {
+  if (s.status === 'confirmed') return ' <span class="badge ok" title="Matches an independent measurement">confirmed</span>';
+  if (s.status === 'plausible') return ' <span class="badge" title="Live and sensible, but the scaling is not checked yet">plausible</span>';
+  return '';
 }
 
 async function sendPollSelection() {
