@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eclipse GS diagnostics</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>1991 Eclipse GS</h1>
+      <p class="sub">2.0 16V, Swiss spec, ECU ROM E935</p>
+    </div>
+    <p class="sim" id="sim" hidden>Simulated car</p>
+  </header>
+
+  <section class="chain" aria-label="Connection">
+    <ol id="chain">
+      <li data-step="laptop"><span class="node">Laptop</span></li>
+      <li data-step="adapter"><span class="node">Arduino</span><span class="port" id="port"></span></li>
+      <li data-step="line"><span class="node">Diagnostic line</span></li>
+      <li data-step="ecu"><span class="node">ECU</span><span class="port" id="ver"></span></li>
+    </ol>
+    <p class="hint" id="hint" role="status" aria-live="polite">Starting…</p>
+  </section>
+
+  <section class="lcd" id="lcd" aria-label="Live readings">
+    <div class="big" data-id="rpm"><span class="v">–</span><span class="u">rpm</span></div>
+    <div class="big" data-id="ect"><span class="v">–</span><span class="u">°C coolant</span></div>
+    <div class="big" data-id="timing"><span class="v">–</span><span class="u">° timing</span></div>
+    <div class="big" data-id="batt"><span class="v">–</span><span class="u">V battery</span></div>
+    <p class="rate" id="rate"></p>
+  </section>
+
+  <main class="grid">
+    <section class="panel sensors">
+      <div class="head">
+        <h2>Sensors</h2>
+        <div class="actions">
+          <button id="rec" type="button">Record</button>
+          <button id="csv" type="button" disabled>Download CSV</button>
+        </div>
+      </div>
+      <p class="note">Tick a sensor to poll it. Fewer sensors means faster updates. Scaling comes from US ECUs, so check values against real measurements.</p>
+      <table>
+        <thead><tr><th scope="col"><span class="sr">Poll</span></th><th scope="col">Sensor</th><th scope="col" class="num">Value</th><th scope="col" class="num">Raw</th><th scope="col">Last 30 s</th></tr></thead>
+        <tbody id="sensorRows"></tbody>
+      </table>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <h2>Switches</h2>
+        <ul class="flags" id="flags"></ul>
+      </section>
+
+      <section class="panel faults">
+        <div class="head">
+          <h2>Fault codes</h2>
+          <div class="actions">
+            <button id="readFaults" type="button">Read again</button>
+            <button id="clearFaults" type="button" class="danger">Clear codes</button>
+          </div>
+        </div>
+        <h3>Active now</h3>
+        <ul id="faultsActive" class="codes"><li class="empty">Not read yet</li></ul>
+        <h3>Stored</h3>
+        <ul id="faultsStored" class="codes"><li class="empty">Not read yet</li></ul>
+        <p class="note">Clearing only works with the engine off.</p>
+      </section>
+    </div>
+
+    <section class="panel explore">
+      <div class="head">
+        <h2>Explore the ECU</h2>
+      </div>
+      <p class="note">Your E935 isn't documented. These views show the raw bytes, so you can see which addresses change when you rev, warm up or flip a switch.</p>
+
+      <div class="tool">
+        <div class="head">
+          <h3>Sensor table 0x00–0x3F</h3>
+          <label class="toggle"><input type="checkbox" id="rawToggle" /> Scan continuously</label>
+        </div>
+        <div class="hex" id="rawGrid" aria-label="Sensor table bytes"></div>
+      </div>
+
+      <div class="tool">
+        <h3>Read one address</h3>
+        <form id="readForm" class="inline">
+          <label for="addr">Address</label>
+          <input id="addr" name="addr" value="FD" maxlength="2" pattern="[0-9A-Fa-f]{1,2}" autocomplete="off" spellcheck="false" />
+          <button type="submit">Read</button>
+          <output id="readOut"></output>
+        </form>
+        <p class="note">Commands that change something (clearing codes, actuator tests 0xF1–0xFC) are blocked here.</p>
+      </div>
+
+      <div class="tool">
+        <div class="head">
+          <h3>RAM 0x40–0xF0</h3>
+          <div class="actions">
+            <button id="ramBtn" type="button">Read RAM</button>
+            <button id="ramSave" type="button" disabled>Download JSON</button>
+          </div>
+        </div>
+        <div class="hex" id="ramGrid" aria-label="RAM bytes"></div>
+        <p class="note" id="ramNote">Read it twice to see what changed in between. Changed bytes are highlighted.</p>
+      </div>
+    </section>
+
+    <section class="panel log">
+      <h2>Activity</h2>
+      <ol id="log"></ol>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
