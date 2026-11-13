@@ -1,75 +1,66 @@
 /*
- * Line sniffer: shows what the ECU does on diagnostic pin 1, in both polarities.
+ * Line sniffer for ECUs with an inverted diagnostic line, such as the E935.
  *
- * Use it when dsm_bridge gets clean echoes but no reply. dsm_bridge drops every
- * frame that is not a valid 1953-baud byte; this sketch logs every edge instead.
+ * The E935 leaves pin 1 low while idle and replies by driving it to 12 V:
+ * start bit HIGH, 1 bits LOW, 1953 baud. This sketch sends whitelisted read
+ * requests in that polarity and logs every edge of the reply.
  *
- * Wiring: the ULN2003 adapter from docs/wiring.md, with two changes:
- *   R4 1k  c10 to c15, and e15 -> D4 (instead of Arduino 5V)
- *   10k    d10 to d18, and a18 -> - rail (pull-down on the line)
- *   D2 -> module IN1   (D2 HIGH pulls the line low)
- *   line -> 20k -> D3  (reads the line)
+ * Wiring (docs/wiring.md, inverted variant):
+ *   line -> 1k (R4) -> D4     transmits: drives the line to 0 V or 5 V
+ *   line -> 2k      -> D5     pull-down: D5 LOW while idle and listening
+ *   line -> 20k     -> D3     reads the line
+ *   ULN2003 OUT1 must NOT be connected to the line.
  *
- * Mode A, normal line: D4 HIGH pulls the line up through 1k (about 4.5 V).
- *   The ULN2003 sends; the sketch listens for the ECU pulling the line low.
- * Mode B, inverted line: D4 lets go, so the 10k holds the line low.
- *   D4 sends inverted bytes (start bit HIGH, 1 bits LOW), then lets go again;
- *   the sketch listens for the ECU driving the line high.
+ * Safety:
+ *   - Nothing is sent until the PC sends 'g'. Reset, upload and port open send nothing.
+ *   - Only whitelisted read addresses. 0xFD is left out: one bit error turns it
+ *     into 0xFC (actuator test) or 0xFF.
+ *   - If the line goes high while we drive it low, the ECU misread the request.
+ *     The sketch then releases the line and sends nothing more in that run.
+ *   - D2 (ULN2003 input) stays LOW.
  *
- * It sends only the read-only requests 0xFD, 0x14 and 0x21 at 1953 baud.
- * It never sends at other speeds: an ECU at 1953 baud would decode such a byte
- * as a different address, possibly an actuator test (0xF1-0xFC).
- *
- * Open the port at 115200 baud; opening it resets the Uno and starts one run.
- * Output per window: "<label> lvl0=<0|1> n=<edges> : t1 t2 ..."
- *   lvl0  line level at the window start (1 = high)
- *   t     microseconds after the window start, one per level change
- * At 1953 baud one bit is 512 us. Upload dsm_bridge again afterwards.
+ * Output per request: "<addr>-<run> lvl0=<0|1> n=<edges> : t1 t2 ..."
+ *   t  microseconds after our start bit, one per level change.
+ *   Our request occupies 0-5120 us; the reply follows.
  */
 
-const uint8_t ULN_PIN = 2;   // HIGH = module pulls the line low
+const uint8_t ULN_PIN = 2;
 const uint8_t RX_PIN = 3;
-const uint8_t DRV_PIN = 4;   // drives the line through 1k
+const uint8_t TX_PIN = 4;
+const uint8_t PD_PIN = 5;
 const uint32_t BIT_US = 512;
+const uint32_t SETTLE_US = 150;  // after our own edge, through 1k and the line capacitance
 const uint16_t MAXE = 160;
 uint32_t edges[MAXE];
+bool aborted = false;
+
+static const uint8_t WHITELIST[] = { 0x14, 0x07, 0x00, 0x21, 0x17 };
+const uint8_t RUNS = 5;
 
 static inline bool lineHigh() { return PIND & _BV(RX_PIN); }  // faster than digitalRead
-static inline void waitUntil(uint32_t t) { while ((int32_t)(micros() - t) < 0) {} }
 
-static void drvHigh() { digitalWrite(DRV_PIN, HIGH); pinMode(DRV_PIN, OUTPUT); }
-static void drvLow() { digitalWrite(DRV_PIN, LOW); pinMode(DRV_PIN, OUTPUT); }
-static void drvRelease() { pinMode(DRV_PIN, INPUT); }  // INPUT also clears the pull-up
+static void txHigh() { digitalWrite(TX_PIN, HIGH); pinMode(TX_PIN, OUTPUT); }
+static void txLow() { digitalWrite(TX_PIN, LOW); pinMode(TX_PIN, OUTPUT); }
+static void txRelease() { pinMode(TX_PIN, INPUT); }   // INPUT also clears the pull-up
+static void pdOn() { digitalWrite(PD_PIN, LOW); pinMode(PD_PIN, OUTPUT); }
+static void pdOff() { pinMode(PD_PIN, INPUT); }
 
-/* Mode A: send one byte, 8N1, through the inverting ULN2003 stage. */
-static void sendNormal(uint8_t b) {
-  uint32_t t0 = micros();
-  digitalWrite(ULN_PIN, HIGH);                   // start bit: line low
-  for (uint8_t i = 0; i < 8; i++) {
-    waitUntil(t0 + (i + 1) * BIT_US);
-    digitalWrite(ULN_PIN, (b >> i) & 1 ? LOW : HIGH);
-  }
-  waitUntil(t0 + 9 * BIT_US);
-  digitalWrite(ULN_PIN, LOW);                    // stop bit: line high
-  waitUntil(t0 + 10 * BIT_US);
+/* Hand the line to the pull-down: the idle and listening state. */
+static void idleLine() { pdOn(); txRelease(); }
+
+static void printEdges(const char *label, bool lvl0, uint16_t n) {
+  Serial.print(label);
+  Serial.print(F(" lvl0="));
+  Serial.print(lvl0);
+  Serial.print(F(" n="));
+  Serial.print(n);
+  Serial.print(F(" :"));
+  for (uint16_t i = 0; i < n; i++) { Serial.print(' '); Serial.print(edges[i]); }
+  Serial.println();
 }
 
-/* Mode B: send one byte, 8N1 with inverted levels, through D4. */
-static void sendInverted(uint8_t b) {
-  uint32_t t0 = micros();
-  drvHigh();                                     // start bit: line high
-  for (uint8_t i = 0; i < 8; i++) {
-    waitUntil(t0 + (i + 1) * BIT_US);
-    if ((b >> i) & 1) drvLow(); else drvHigh();
-  }
-  waitUntil(t0 + 9 * BIT_US);
-  drvLow();                                      // stop bit: line low
-  waitUntil(t0 + 10 * BIT_US);
-  drvRelease();
-}
-
-/* Log every level change on the line for windowUs, then print it. */
-static void capture(const char *label, uint32_t windowUs) {
+/* Log every level change for windowUs, without sending. */
+static void passive(const char *label, uint32_t windowUs) {
   uint16_t n = 0;
   bool last = lineHigh();
   bool lvl0 = last;
@@ -78,97 +69,85 @@ static void capture(const char *label, uint32_t windowUs) {
     bool l = lineHigh();
     if (l != last) { edges[n++] = micros() - start; last = l; }
   }
-  Serial.print(label);
-  Serial.print(F(" lvl0="));
-  Serial.print(lvl0);
-  Serial.print(F(" n="));
-  Serial.print(n);
-  Serial.print(F(" :"));
-  for (uint16_t i = 0; i < n; i++) { Serial.print(' '); Serial.print(edges[i]); }
-  Serial.println();
+  printEdges(label, lvl0, n);
 }
 
 /*
- * Mode B: send one inverted byte and log edges from its start bit on, so the
- * request itself is the time reference for the reply.
+ * Send one inverted byte and log edges from its start bit on.
+ * Returns false and releases the line if the ECU drives it during our request.
  */
-static void sendCaptureInverted(uint8_t b, const char *label, uint32_t windowUs) {
+static bool request(uint8_t b, const char *label, uint32_t windowUs) {
   uint16_t n = 0;
   bool last = lineHigh();
   bool lvl0 = last;
-  uint8_t next = 0;                              // next bit edge: 0 start, 1-8 data, 9 stop, 10 release
+  bool drivenLow = false;
+  uint32_t lastEdge = 0;
+  uint8_t next = 0;                              // 0 start, 1-8 data, 9 stop, 10 release
   uint32_t t0 = micros();
   for (;;) {
     uint32_t dt = micros() - t0;
     if (dt >= windowUs || n >= MAXE) break;
     if (next <= 10 && dt >= next * BIT_US) {
-      if (next == 0) drvHigh();
-      else if (next <= 8) { if ((b >> (next - 1)) & 1) drvLow(); else drvHigh(); }
-      else if (next == 9) drvLow();
-      else drvRelease();
+      if (next == 0) { pdOff(); txHigh(); drivenLow = false; }
+      else if (next <= 8) {
+        drivenLow = (b >> (next - 1)) & 1;
+        if (drivenLow) txLow(); else txHigh();
+      }
+      else if (next == 9) { txLow(); drivenLow = true; }
+      else { idleLine(); drivenLow = false; }
+      lastEdge = dt;
       next++;
     }
     bool l = lineHigh();
+    if (drivenLow && l && dt - lastEdge > SETTLE_US) {
+      idleLine();
+      printEdges(label, lvl0, n);
+      Serial.print(F("ABORT: line high during our request at "));
+      Serial.print(dt);
+      Serial.println(F(" us. The ECU misread it. No more requests."));
+      return false;
+    }
     if (l != last) { edges[n++] = micros() - t0; last = l; }
   }
-  drvRelease();
-  Serial.print(label);
-  Serial.print(F(" lvl0="));
-  Serial.print(lvl0);
-  Serial.print(F(" n="));
-  Serial.print(n);
-  Serial.print(F(" :"));
-  for (uint16_t i = 0; i < n; i++) { Serial.print(' '); Serial.print(edges[i]); }
-  Serial.println();
+  idleLine();
+  printEdges(label, lvl0, n);
+  return true;
 }
 
-static const uint8_t ADDRS[] = { 0xFD, 0x14, 0x21 };
-/* Read-only addresses the probe already sent without effect in normal polarity. */
-static const uint8_t ADDRS_B[] = { 0xFD, 0x14, 0x21, 0x07, 0x17, 0x00 };
-
-static void requests(char mode, void (*send)(uint8_t)) {
-  char label[16];
-  for (uint8_t a = 0; a < sizeof ADDRS; a++) {
-    for (uint8_t r = 0; r < 3; r++) {
-      send(ADDRS[a]);
-      snprintf(label, sizeof label, "%c-req-%02X-%u", mode, ADDRS[a], r);
-      capture(label, 500000UL);
-      delay(100);
-    }
-  }
-}
-
-void setup() {
-  digitalWrite(ULN_PIN, LOW);                    // module off before D2 becomes an output
-  pinMode(ULN_PIN, OUTPUT);
-  pinMode(RX_PIN, INPUT);
-  drvRelease();
-  Serial.begin(115200);
-  delay(200);
-  Serial.println(F("SNIFFER START"));
-
-  drvHigh();                                     // mode A: pull-up on
+static void run() {
+  Serial.println(F("RUN START"));
+  idleLine();
   delay(50);
-  capture("A-passive", 3000000UL);
-  requests('A', sendNormal);
-
-  drvRelease();                                  // mode B: line held low by 10k
-  delay(50);
-  capture("B-passive-1", 3000000UL);
-  requests('B', sendInverted);
-
-  // Mode B detail: edges from the request's start bit on, 5 runs per address.
-  char label[16];
-  for (uint8_t a = 0; a < sizeof ADDRS_B; a++) {
-    for (uint8_t r = 0; r < 5; r++) {
-      snprintf(label, sizeof label, "BD-%02X-%u", ADDRS_B[a], r);
-      sendCaptureInverted(ADDRS_B[a], label, 40000UL);
+  passive("passive-1", 2000000UL);
+  char label[12];
+  for (uint8_t a = 0; a < sizeof WHITELIST && !aborted; a++) {
+    for (uint8_t r = 0; r < RUNS && !aborted; r++) {
+      snprintf(label, sizeof label, "%02X-%u", WHITELIST[a], r);
+      if (!request(WHITELIST[a], label, 40000UL)) aborted = true;
       delay(200);
     }
   }
-  capture("B-passive-2", 3000000UL);
-
-  Serial.println(F("SNIFFER DONE"));
+  if (!aborted) passive("passive-2", 2000000UL);
+  idleLine();
+  Serial.println(aborted ? F("RUN ABORTED") : F("RUN DONE"));
 }
 
-void loop() {}
+void setup() {
+  digitalWrite(ULN_PIN, LOW);
+  pinMode(ULN_PIN, OUTPUT);
+  pinMode(RX_PIN, INPUT);
+  txRelease();
+  pdOff();
+  Serial.begin(115200);
+  Serial.println(F("READY: send g to start one run"));
+}
+
+void loop() {
+  if (Serial.available() && Serial.read() == 'g') {
+    aborted = false;
+    run();
+    txRelease();
+    pdOff();
+    Serial.println(F("READY: send g to start one run"));
+  }
+}
