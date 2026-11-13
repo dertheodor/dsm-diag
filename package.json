@@ -1,0 +1,42 @@
+{
+  "name": "dsm-diag",
+  "version": "0.1.0",
+  "description": "Open-source diagnostics and datalogging for 1G DSMs (1990–94 Eclipse, Talon, Laser) over the 12-pin diagnostic port",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dsm",
+    "1g",
+    "eclipse",
+    "talon",
+    "laser",
+    "4g63",
+    "mitsubishi",
+    "ecu",
+    "aldl",
+    "obd1",
+    "datalogger",
+    "arduino"
+  ],
+  "scripts": {
+    "dashboard": "tsx src/server/server.ts",
+    "sim": "tsx src/server/server.ts --sim",
+    "cli": "tsx src/cli.ts",
+    "selftest": "tsx src/selftest.ts",
+    "typecheck": "tsc -p .",
+    "test:bridge": "g++ -O1 -std=c++17 -Wall -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DINV -DWIRING_12V -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim",
+    "test": "npm run typecheck && npm run selftest"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "serialport": "^12.0.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
