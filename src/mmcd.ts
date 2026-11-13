@@ -36,10 +36,19 @@ export class ProtocolError extends Error {
   constructor(
     message: string,
     readonly kind: ProtocolErrorKind,
+    /** Set for 'echo-mismatch'. */
+    readonly echo?: { sent: number; got: number },
   ) {
     super(message);
   }
 }
+
+/**
+ * True if the bridge aborted a request because the ECU drove the line during it.
+ * WIRING_INVERTED in firmware/dsm_bridge answers that case with an inverted echo.
+ */
+export const isBridgeAbort = (e: unknown): e is ProtocolError =>
+  e instanceof ProtocolError && e.echo !== undefined && e.echo.got === (e.echo.sent ^ 0xff);
 
 /**
  * The only addresses the E935 profile sends: reads verified on the E935 (docs/e935.md).
@@ -88,6 +97,7 @@ export class Ecu {
         throw new ProtocolError(
           `echo mismatch: sent 0x${hex(addr)} got 0x${hex(echo)} (baud/polarity?)`,
           'echo-mismatch',
+          { sent: addr, got: echo },
         );
     }
     const data = await this.t.readByte(this.opts.timeoutMs);

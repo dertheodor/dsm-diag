@@ -1,5 +1,5 @@
 /** Offline self-test against a simulated ECU (echo + 1-byte reply). Run: npx tsx src/selftest.ts */
-import { E935_ALLOWED, Ecu, ProtocolError, SENSORS, type Transport } from './mmcd.js';
+import { E935_ALLOWED, Ecu, ProtocolError, SENSORS, isBridgeAbort, type Transport } from './mmcd.js';
 
 class FakeEcu implements Transport {
   private q: number[] = [];
@@ -45,3 +45,9 @@ check((await e935.request(0x21)) === 28, 'E935: one missed reply is retried');
 fake.silent = 2;
 const gaveUp = await e935.request(0x21).then(() => false, (e) => e instanceof ProtocolError && e.kind === 'no-reply');
 check(gaveUp, 'E935: gives up after one retry');
+
+/* Only an inverted echo is the bridge's misread signature; a wiring fault is not. */
+const mismatch = (sent: number, got: number) => new ProtocolError('echo mismatch', 'echo-mismatch', { sent, got });
+check(isBridgeAbort(mismatch(0x14, 0xeb)), 'E935: inverted echo is a bridge abort');
+check(!isBridgeAbort(mismatch(0x14, 0xff)), 'E935: echo 0xFF is a wiring fault, not an abort');
+check(!isBridgeAbort(mismatch(0x14, 0x00)), 'E935: echo 0x00 is a wiring fault, not an abort');

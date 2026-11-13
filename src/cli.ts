@@ -12,7 +12,7 @@
  * Bring-up order: version → battery (compare with a multimeter) → faults → live polling.
  */
 import { writeFileSync } from 'node:fs';
-import { E935_ALLOWED, Ecu, ProtocolError, SENSORS, hex } from './mmcd.js';
+import { E935_ALLOWED, Ecu, SENSORS, hex, isBridgeAbort } from './mmcd.js';
 import { NodeSerialTransport } from './nodeserial.js';
 
 const args = process.argv.slice(2);
@@ -69,7 +69,7 @@ for (;;) {
     try {
       parts.push(`${s.id} ${(await ecu.readSensor(s)).toFixed(1)}${s.unit}`);
     } catch (e) {
-      if (e935 && e instanceof ProtocolError && e.kind === 'echo-mismatch') {
+      if (e935 && isBridgeAbort(e)) {
         console.error(`\nStopped for safety, the ECU may have misread a request: ${e.message}`);
         await t.close();
         process.exit(1);

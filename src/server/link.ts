@@ -5,7 +5,7 @@
  */
 import { EventEmitter } from 'node:events';
 import { SerialPort } from 'serialport';
-import { E935_ALLOWED, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, type Fault, type Sensor, type Transport } from '../mmcd.js';
+import { E935_ALLOWED, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, isBridgeAbort, type Fault, type Sensor, type Transport } from '../mmcd.js';
 import { NodeSerialTransport } from '../nodeserial.js';
 import { SimTransport, simAdapterPresent } from './sim.js';
 
@@ -161,11 +161,11 @@ export class Link extends EventEmitter {
   }
 
   /**
-   * In the E935 profile, an echo mismatch means the bridge aborted a misread
+   * In the E935 profile, an inverted echo means the bridge aborted a misread
    * request and locked itself. Stop everything until the adapter is replugged.
    */
   private reportFailure(e: unknown, path: string) {
-    if (this.opts.e935 && e instanceof ProtocolError && e.kind === 'echo-mismatch') {
+    if (this.opts.e935 && isBridgeAbort(e)) {
       this.ecu = null;
       this.emit('log', `Stopped for safety: ${e.message}`);
       this.setState({ phase: 'halted', path, detail: e.message });
@@ -232,7 +232,7 @@ export class Link extends EventEmitter {
         if (requests === 0) await sleep(100);
       } catch (e) {
         if (!this.alive(gen)) return;
-        if (this.opts.e935 && e instanceof ProtocolError && e.kind === 'echo-mismatch') {
+        if (this.opts.e935 && isBridgeAbort(e)) {
           this.reportFailure(e, path);
           return;
         }
