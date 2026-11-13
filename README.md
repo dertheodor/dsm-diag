@@ -56,7 +56,7 @@ A terminal tester is also included: `npm run cli -- /dev/ttyUSB0`.
 | `src/server/` | Dashboard server: adapter discovery, request queue, simulation |
 | `web/` | Dashboard page |
 | `src/cli.ts` | Terminal tester |
-| `firmware/dsm_bridge/` | Arduino bridge (bit-banged 1953 baud, 5 V or 12 V wiring) |
+| `firmware/dsm_bridge/` | Arduino bridge (bit-banged 1953 baud, 5 V, 12 V or inverted wiring) |
 | `firmware/voltcheck/` | Measures the diagnostic line voltage |
 | `firmware/sniffer/` | Logs every edge on the line, for an ECU that does not reply |
 | `docs/` | Wiring, protocol, E935 notes |
