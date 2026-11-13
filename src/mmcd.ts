@@ -13,6 +13,9 @@
  *   0xCA       clear fault codes
  *   0xF1–0xFC  actuator tests (engine OFF only, ~6 s)
  *   0xFD       ECU/CPU version (0xB5 = E931, 0xB7 = E932)
+ *
+ * The European E935 speaks the same protocol on an inverted line (docs/e935.md).
+ * The bridge firmware handles the polarity, so this module does not change.
  */
 
 export interface Transport {
@@ -38,15 +41,44 @@ export class ProtocolError extends Error {
   }
 }
 
+/**
+ * The only addresses the E935 profile sends: reads verified on the E935 (docs/e935.md).
+ * The hard gate is allowed() in firmware/dsm_bridge/dsm_bridge.ino (WIRING_INVERTED);
+ * this copy keeps the software from asking for anything else.
+ */
+export const E935_ALLOWED: ReadonlySet<number> = new Set([0x07, 0x14, 0x17, 0x21, 0x38, 0x39, 0x3b, 0x3c]);
+
+export interface EcuOptions {
+  echo: boolean;
+  timeoutMs: number;
+  /** Extra attempts after 'no-reply'. Echo errors are never retried. */
+  retries?: number;
+  /** If set, request() refuses every other address before anything is sent. */
+  allow?: ReadonlySet<number>;
+}
+
 export class Ecu {
   constructor(
     private readonly t: Transport,
-    private readonly opts = { echo: true, timeoutMs: 150 },
+    private readonly opts: EcuOptions = { echo: true, timeoutMs: 150 },
   ) {}
 
   /** Send one request byte and return the ECU's one-byte reply. */
   async request(addr: number): Promise<number> {
     if (addr < 0 || addr > 0xff) throw new RangeError(`bad address ${addr}`);
+    if (this.opts.allow && !this.opts.allow.has(addr))
+      throw new RangeError(`address 0x${hex(addr)} is not allowed for this ECU`);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.requestOnce(addr);
+      } catch (e) {
+        const retry = e instanceof ProtocolError && e.kind === 'no-reply' && attempt < (this.opts.retries ?? 0);
+        if (!retry) throw e;
+      }
+    }
+  }
+
+  private async requestOnce(addr: number): Promise<number> {
     this.t.flush();
     await this.t.write(addr);
     if (this.opts.echo) {

@@ -5,7 +5,7 @@
  */
 import { EventEmitter } from 'node:events';
 import { SerialPort } from 'serialport';
-import { Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, type Fault, type Transport } from '../mmcd.js';
+import { E935_ALLOWED, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, type Fault, type Sensor, type Transport } from '../mmcd.js';
 import { NodeSerialTransport } from '../nodeserial.js';
 import { SimTransport, simAdapterPresent } from './sim.js';
 
@@ -14,7 +14,10 @@ export type LinkState =
   | { phase: 'opening'; path: string }
   | { phase: 'no-line'; path: string; detail: string }
   | { phase: 'no-ecu'; path: string }
-  | { phase: 'online'; path: string; version: { raw: number; cpu: string } };
+  /** version is null in the E935 profile: it never sends the 0xFD version request. */
+  | { phase: 'online'; path: string; version: { raw: number; cpu: string } | null }
+  /** The ECU misread a request. Nothing is sent until the adapter is plugged in again. */
+  | { phase: 'halted'; path: string; detail: string };
 
 export interface Sample {
   t: number;
@@ -33,16 +36,41 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Link extends EventEmitter {
   state: LinkState = { phase: 'searching' };
-  pollIds = new Set(['rpm', 'tps', 'timing', 'ect', 'iat', 'batt', 'o2', 'injpw']);
-  rawMap = false;
+  /** Sensors this profile may poll. */
+  readonly sensors: readonly Sensor[];
+  /** Switch flag bytes this profile may poll. */
+  readonly flags: Partial<typeof FLAGS>;
+  pollIds: Set<string>;
 
   private t: ClosableTransport | null = null;
   private ecu: Ecu | null = null;
   private busy: Promise<unknown> = Promise.resolve();
   private gen = 0; // bumps whenever the transport changes; stale loops exit
+  private rawMapOn = false;
 
-  constructor(private readonly opts: { sim: boolean; port?: string }) {
+  /**
+   * e935: the inverted-line profile. Only E935_ALLOWED addresses are sent, and
+   * Explore, Clear codes and the version request are off.
+   */
+  constructor(private readonly opts: { sim: boolean; port?: string; e935: boolean }) {
     super();
+    this.sensors = opts.e935 ? SENSORS.filter((s) => E935_ALLOWED.has(s.addr)) : SENSORS;
+    this.flags = opts.e935 ? {} : FLAGS;
+    const defaults = ['rpm', 'tps', 'timing', 'ect', 'iat', 'batt', 'o2', 'injpw'];
+    this.pollIds = new Set(defaults.filter((id) => this.sensors.some((s) => s.id === id)));
+  }
+
+  get e935() {
+    return this.opts.e935;
+  }
+
+  get rawMap() {
+    return this.rawMapOn;
+  }
+
+  set rawMap(on: boolean) {
+    if (on && this.opts.e935) throw new Error('Explore is off in the E935 profile.');
+    this.rawMapOn = on;
   }
 
   start() {
@@ -86,7 +114,9 @@ export class Link extends EventEmitter {
     const t: ClosableTransport = this.opts.sim ? new SimTransport() : await NodeSerialTransport.open(path, 'uno');
     const gen = ++this.gen;
     this.t = t;
-    this.ecu = new Ecu(t);
+    this.ecu = new Ecu(t, this.opts.e935
+      ? { echo: true, timeoutMs: 150, retries: 1, allow: E935_ALLOWED }
+      : { echo: true, timeoutMs: 150 });
     t.onClose(() => {
       if (this.gen !== gen) return;
       this.emit('log', 'Adapter unplugged');
@@ -105,16 +135,24 @@ export class Link extends EventEmitter {
     return this.gen === gen && this.ecu !== null;
   }
 
+  /** The E935 profile probes with the battery voltage: 0xFD is not on its allowlist. */
+  private async probe(): Promise<{ raw: number; cpu: string } | null> {
+    if (!this.opts.e935) return this.ecu!.version();
+    await this.ecu!.request(0x14);
+    return null;
+  }
+
   private async sessionLoop(gen: number, path: string) {
     while (this.alive(gen)) {
       // Probe until the ECU answers.
       try {
-        const version = await this.exclusive(() => this.ecu!.version());
+        const version = await this.exclusive(() => this.probe());
         this.setState({ phase: 'online', path, version });
-        this.emit('log', `ECU answered, version byte 0x${version.raw.toString(16).toUpperCase()}`);
+        this.emit('log', version ? `ECU answered, version byte 0x${version.raw.toString(16).toUpperCase()}` : 'ECU answered (E935 profile)');
       } catch (e) {
         if (!this.alive(gen)) return;
-        this.reportProbeFailure(e, path);
+        this.reportFailure(e, path);
+        if (!this.alive(gen)) return;
         await sleep(1500);
         continue;
       }
@@ -122,8 +160,16 @@ export class Link extends EventEmitter {
     }
   }
 
-  private reportProbeFailure(e: unknown, path: string) {
-    if (e instanceof ProtocolError && e.kind === 'no-reply') {
+  /**
+   * In the E935 profile, an echo mismatch means the bridge aborted a misread
+   * request and locked itself. Stop everything until the adapter is replugged.
+   */
+  private reportFailure(e: unknown, path: string) {
+    if (this.opts.e935 && e instanceof ProtocolError && e.kind === 'echo-mismatch') {
+      this.ecu = null;
+      this.emit('log', `Stopped for safety: ${e.message}`);
+      this.setState({ phase: 'halted', path, detail: e.message });
+    } else if (e instanceof ProtocolError && e.kind === 'no-reply') {
       if (this.state.phase !== 'no-ecu') this.setState({ phase: 'no-ecu', path });
     } else {
       const detail = e instanceof Error ? e.message : String(e);
@@ -143,7 +189,7 @@ export class Link extends EventEmitter {
       let requests = 0;
       try {
         const values: Sample['values'] = {};
-        for (const s of SENSORS) {
+        for (const s of this.sensors) {
           if (!this.pollIds.has(s.id)) continue;
           const raw = await this.exclusive(() => this.ecu!.request(s.addr));
           requests++;
@@ -151,10 +197,10 @@ export class Link extends EventEmitter {
         }
         const now = Date.now();
 
-        if (now - lastFlags > 500) {
+        if (now - lastFlags > 500 && Object.keys(this.flags).length) {
           const bytes: Flags['bytes'] = {};
           const on: string[] = [];
-          for (const [addr, bits] of Object.entries(FLAGS)) {
+          for (const [addr, bits] of Object.entries(this.flags)) {
             const b = await this.exclusive(() => this.ecu!.request(Number(addr)));
             requests++;
             bytes[`0x${Number(addr).toString(16).padStart(2, '0').toUpperCase()}`] = b;
@@ -170,7 +216,7 @@ export class Link extends EventEmitter {
           lastFaults = now;
         }
 
-        if (this.rawMap) {
+        if (this.rawMapOn) {
           // 8 addresses per cycle so live data stays fluid.
           for (let i = 0; i < 8; i++) {
             rawSnapshot[rawCursor] = await this.exclusive(() => this.ecu!.request(rawCursor));
@@ -186,9 +232,13 @@ export class Link extends EventEmitter {
         if (requests === 0) await sleep(100);
       } catch (e) {
         if (!this.alive(gen)) return;
+        if (this.opts.e935 && e instanceof ProtocolError && e.kind === 'echo-mismatch') {
+          this.reportFailure(e, path);
+          return;
+        }
         if (++misses >= 3) {
           this.emit('log', `Lost the ECU: ${(e as Error).message}`);
-          this.reportProbeFailure(e, path);
+          this.reportFailure(e, path);
           return; // back to probing
         }
       }
@@ -209,6 +259,10 @@ export class Link extends EventEmitter {
     return this.ecu;
   }
 
+  private requireExplore() {
+    if (this.opts.e935) throw new Error('This is off in the E935 profile. Only verified addresses are read.');
+  }
+
   async readFaults(): Promise<Faults> {
     const ecu = this.requireOnline();
     const r = (a: number) => this.exclusive(() => ecu.request(a));
@@ -218,6 +272,7 @@ export class Link extends EventEmitter {
   }
 
   async clearFaults(): Promise<{ cleared: boolean; faults: Faults }> {
+    this.requireExplore();
     const ecu = this.requireOnline();
     const cleared = (await this.exclusive(() => ecu.request(0xca))) === 0;
     const faults = await this.readFaults();
@@ -227,6 +282,7 @@ export class Link extends EventEmitter {
   }
 
   async readAddress(addr: number): Promise<number> {
+    this.requireExplore();
     if (!Number.isInteger(addr) || addr < 0 || addr > 0xff) throw new Error('Address must be 0x00–0xFF.');
     if (addr === 0xca) throw new Error('0xCA clears fault codes. Use "Clear codes" instead.');
     if (addr >= 0xf1 && addr <= 0xfc) throw new Error('0xF1–0xFC run actuator tests and are blocked here.');
@@ -236,6 +292,7 @@ export class Link extends EventEmitter {
   }
 
   async dumpRam(): Promise<Record<string, number>> {
+    this.requireExplore();
     const ecu = this.requireOnline();
     const out: Record<string, number> = {};
     for (let a = 0x40; a <= 0xf0; a++) {

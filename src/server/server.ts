@@ -4,6 +4,7 @@
  *   npm run dashboard            # real adapter, auto-detected
  *   npm run dashboard -- --sim   # simulated car, no hardware
  *   npm run dashboard -- --port /dev/ttyUSB0
+ *   npm run dashboard:e935       # E935 profile: inverted line, verified addresses only
  *
  * Then open http://localhost:1991
  */
@@ -12,16 +13,16 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { build } from 'esbuild';
-import { SENSORS, FLAGS } from '../mmcd.js';
 import { Link } from './link.js';
 
 const args = process.argv.slice(2);
 const sim = args.includes('--sim');
+const e935 = args.includes('--e935');
 const portArg = args.includes('--port') ? args[args.indexOf('--port') + 1] : undefined;
 const HTTP_PORT = Number(process.env.PORT ?? 1991);
 const webDir = join(dirname(fileURLToPath(import.meta.url)), '../../web');
 
-const link = new Link({ sim, port: portArg });
+const link = new Link({ sim, port: portArg, e935 });
 
 /* ---------------------------------------------------------------- assets */
 
@@ -66,8 +67,9 @@ function openEvents(res: ServerResponse) {
   });
   const meta = {
     sim,
-    sensors: SENSORS.map(({ id, name, addr, unit }) => ({ id, name, addr, unit })),
-    flags: FLAGS,
+    e935,
+    sensors: link.sensors.map(({ id, name, addr, unit }) => ({ id, name, addr, unit })),
+    flags: link.flags,
     poll: [...link.pollIds],
     rawMap: link.rawMap,
   };
@@ -94,7 +96,7 @@ function send(res: ServerResponse, status: number, data: unknown) {
 
 const api: Record<string, (body: any) => Promise<unknown>> = {
   '/api/poll': async (b: { sensors?: string[]; rawMap?: boolean }) => {
-    if (Array.isArray(b.sensors)) link.pollIds = new Set(b.sensors.filter((id) => SENSORS.some((s) => s.id === id)));
+    if (Array.isArray(b.sensors)) link.pollIds = new Set(b.sensors.filter((id) => link.sensors.some((s) => s.id === id)));
     if (typeof b.rawMap === 'boolean') link.rawMap = b.rawMap;
     return { poll: [...link.pollIds], rawMap: link.rawMap };
   },
@@ -121,7 +123,7 @@ const server = createServer(async (req, res) => {
     send(res, 400, { error: (e as Error).message });
   }
 }).listen(HTTP_PORT, '127.0.0.1', () => {
-  console.log(`DSM 1G dashboard: http://localhost:${HTTP_PORT}${sim ? '  (simulated car)' : ''}`);
+  console.log(`DSM 1G dashboard: http://localhost:${HTTP_PORT}${sim ? '  (simulated car)' : ''}${e935 ? '  (E935 profile)' : ''}`);
   console.log(sim ? 'Simulation: adapter appears after 2 s, ECU after 6 s.' : 'Waiting for the Arduino… plug it in any time.');
   link.start();
 });
