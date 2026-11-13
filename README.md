@@ -7,8 +7,9 @@ Arduino starter kit. No ECMLink, no ECU modifications.
 
 ![Dashboard](docs/images/dashboard.png)
 
-> **Status:** early. The adapter and software work on the bench; the first
-> in-car tests are on a 1991 Swiss-spec Eclipse GS with the European E935 ECU.
+> **Status:** early. The adapter and software work on the bench and in a 1991
+> Swiss-spec Eclipse GS with the European E935 ECU. The E935 talks on an inverted
+> line and needs its own wiring and profile: see [docs/e935.md](docs/e935.md).
 > Sensor scaling comes from US ECUs and may differ on yours.
 
 ## What it does
@@ -18,7 +19,8 @@ Arduino starter kit. No ECMLink, no ECU modifications.
 - **Connects by itself** when you plug in the adapter, and tells you which step
   fails if something isn't wired right
 - **Explore the ECU**: live view of the sensor table 0x00–0x3F, single-address
-  reads and RAM dumps with changed bytes highlighted, for undocumented ECUs like the E935
+  reads and RAM dumps with changed bytes highlighted, for undocumented ECUs.
+  Off in the E935 profile, which reads only verified addresses
 - **Read-only by design**: actuator tests and other commands that change something
   are blocked; only "Clear codes" writes, and only when you click it
 - **Simulation mode** to try everything without a car
@@ -38,8 +40,9 @@ With real hardware:
 
 1. Build the adapter: [docs/wiring.md](docs/wiring.md)
 2. Upload `firmware/dsm_bridge/dsm_bridge.ino` with the Arduino IDE
-   (set `WIRING_12V` or `WIRING_5V` to match your line voltage)
+   (set `WIRING_12V`, `WIRING_5V` or `WIRING_INVERTED` to match step 1 of the wiring guide)
 3. `npm run dashboard` and open http://localhost:1991
+   (for the E935: `npm run dashboard:e935`)
 4. Plug in the Arduino, connect it to the car, ignition on
 
 A terminal tester is also included: `npm run cli -- /dev/ttyUSB0`.
