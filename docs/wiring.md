@@ -120,7 +120,7 @@ until you unplug and replug the Arduino.
 |---|---|
 | `no echo` | Sketch not uploaded with `WIRING_INVERTED`, wrong port, or D3 not connected. After a misread, the bridge is locked: replug it. |
 | `echo mismatch … got 0x00` | The line is held high: the pin 10 bridge is missing, so the ECU sends flash codes. |
-| `echo mismatch … got 0xFF` | The line never goes high: check D4 and R4. |
+| `echo mismatch … got 0xFF` | The line never goes high. With the car connected: ignition off, because an ECU without power holds the line low. Otherwise check D4 and R4. |
 | `echo mismatch`, all bits flipped | The ECU misread a request. The bridge stopped. |
 | `no reply` | Wiring works; ECU not answering (ignition, pin 10 bridge) |
 

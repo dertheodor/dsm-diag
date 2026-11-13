@@ -119,7 +119,8 @@ function e935LineHint(detail: string): string {
     return "The Arduino doesn't answer. Check that dsm_bridge is uploaded with WIRING_INVERTED, and that D3, D4 and D5 are wired.";
   if (/got 0x00/.test(detail))
     return 'Something holds the line high. Check that pin 10 is bridged to pin 12: without it, the ECU sends flash codes.';
-  if (/got 0xFF/.test(detail)) return 'The line never goes high when the Arduino sends. Check the D4 wire and the 1k resistor.';
+  if (/got 0xFF/.test(detail))
+    return 'The line never goes high when the Arduino sends. Turn the ignition on: an ECU without power holds the line low. Then check the D4 wire and R4.';
   return `The signal comes back garbled (${detail}). Check for loose wires.`;
 }
 
