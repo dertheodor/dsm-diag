@@ -1,0 +1,17 @@
+node_modules/
+dist/
+
+# Logs and dumps you record from your own car
+*.csv
+ram-*.json
+e935-ram-*.json
+
+# Test build output
+test/bridge-sim
+
+# Arduino IDE / editor clutter
+*.hex
+*.elf
+.vscode/
+.idea/
+.DS_Store
