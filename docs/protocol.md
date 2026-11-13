@@ -9,6 +9,7 @@ often called the MMCd or ALDL protocol after the tools that used it.
 - Single wire, half duplex. The tester and the ECU share pin 1.
 - Diagnostic mode is enabled by bridging pin 10 to pin 12 (ground).
 - No initialisation sequence is needed.
+- The European E935 uses the same protocol with inverted levels: see [e935.md](e935.md).
 
 ## Request / reply
 
@@ -45,6 +46,7 @@ Read it with an EPROM programmer after removing the chip.
 
 - **Arduino bridge** (`firmware/dsm_bridge`): the PC talks to the Uno at 115200 baud;
   the Uno bit-bangs 1953 baud on the line and forwards every byte both ways.
+  With `WIRING_INVERTED`, it also handles the E935 polarity and sends only allowlisted addresses.
 - **Direct USB-serial** (planned cable): an FTDI chip hits 1953.125 baud exactly
   (3 MHz / 1536) and needs no firmware. Use `adapter: 'ftdi'` in the transports.
   This is also what existing tools like TunerPro RT and EvoScan expect.

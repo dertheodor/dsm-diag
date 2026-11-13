@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="610" viewBox="0 0 680 610" role="img">
+<title>dsm-diag breadboard wiring, inverted line (E935), resistors only</title>
+<style>
+  text { font-family: -apple-system, "Segoe UI", "DejaVu Sans", Helvetica, Arial, sans-serif; }
+  .ts { font-size: 12px; fill: #444441; }
+  .th { font-size: 14px; font-weight: 600; fill: #2c2c2a; }
+  .blue rect { fill: #e6f1fb; stroke: #185fa5; stroke-width: 0.5; } .blue .ts { fill: #185fa5; } .blue .th { fill: #0c447c; }
+  .coral rect { fill: #faece7; stroke: #993c1d; stroke-width: 0.5; } .coral .ts { fill: #993c1d; } .coral .th { fill: #712b13; }
+</style>
+<defs>
+  <pattern id="hole" x="107" y="59" width="30" height="22" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#b4b2a9"/></pattern>
+  <pattern id="rail" x="67" y="59" width="30" height="22" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#888780"/></pattern>
+</defs>
+<rect width="680" height="610" fill="#ffffff"/>
+<text class="ts" x="70" y="42" text-anchor="middle">−</text>
+<text class="ts" x="110" y="42" text-anchor="middle">a</text>
+<text class="ts" x="140" y="42" text-anchor="middle">b</text>
+<text class="ts" x="170" y="42" text-anchor="middle">c</text>
+<text class="ts" x="200" y="42" text-anchor="middle">d</text>
+<text class="ts" x="230" y="42" text-anchor="middle">e</text>
+<line x1="70" y1="54" x2="70" y2="490" stroke="#378add" stroke-width="0.5"/>
+<rect x="67" y="59" width="6" height="426" fill="url(#rail)"/>
+<rect x="107" y="59" width="126" height="426" fill="url(#hole)"/>
+<text class="ts" x="30" y="66" text-anchor="middle">1</text>
+<text class="ts" x="30" y="132" text-anchor="middle">4</text>
+<text class="ts" x="30" y="198" text-anchor="middle">7</text>
+<text class="ts" x="30" y="264" text-anchor="middle">10</text>
+<text class="ts" x="30" y="330" text-anchor="middle">13</text>
+<text class="ts" x="30" y="374" text-anchor="middle">15</text>
+<text class="ts" x="30" y="440" text-anchor="middle">18</text>
+<!-- resistors -->
+<line x1="140" y1="194" x2="140" y2="260" stroke="#ba7517" stroke-width="2"/><rect x="135" y="216" width="10" height="22" rx="3" fill="#ef9f27" stroke="#854f0b" stroke-width="0.5"/>
+<line x1="170" y1="128" x2="170" y2="194" stroke="#ba7517" stroke-width="2"/><rect x="165" y="150" width="10" height="22" rx="3" fill="#ef9f27" stroke="#854f0b" stroke-width="0.5"/>
+<line x1="170" y1="260" x2="170" y2="370" stroke="#ba7517" stroke-width="2"/><rect x="165" y="304" width="10" height="22" rx="3" fill="#ef9f27" stroke="#854f0b" stroke-width="0.5"/>
+<line x1="200" y1="260" x2="200" y2="326" stroke="#ba7517" stroke-width="2"/><rect x="195" y="282" width="10" height="22" rx="3" fill="#ef9f27" stroke="#854f0b" stroke-width="0.5"/>
+<line x1="140" y1="326" x2="140" y2="436" stroke="#ba7517" stroke-width="2"/><rect x="135" y="370" width="10" height="22" rx="3" fill="#ef9f27" stroke="#854f0b" stroke-width="0.5"/>
+<text class="ts" x="122" y="230" text-anchor="end">R1</text>
+<text class="ts" x="188" y="165">R2</text>
+<text class="ts" x="180" y="352">R4</text>
+<text class="ts" x="210" y="298">R5</text>
+<text class="ts" x="122" y="386" text-anchor="end">R6</text>
+<!-- Arduino wires -->
+<path d="M70 84 L470 84" fill="none" stroke="#378add" stroke-width="2"/>
+<path d="M230 128 L470 128" fill="none" stroke="#378add" stroke-width="2"/>
+<path d="M230 370 L440 370 L440 172 L470 172" fill="none" stroke="#378add" stroke-width="2"/>
+<path d="M230 436 L455 436 L455 194 L470 194" fill="none" stroke="#378add" stroke-width="2"/>
+<!-- car wires -->
+<path d="M110 260 L92 260 L92 505 L150 505 L150 530" fill="none" stroke="#d85a30" stroke-width="2"/>
+<path d="M70 458 L45 458 L45 530" fill="none" stroke="#d85a30" stroke-width="2"/>
+<path d="M70 480 L70 530" fill="none" stroke="#d85a30" stroke-width="2"/>
+<g fill="#2c2c2a"><circle cx="70" cy="84" r="3.5"/><circle cx="230" cy="128" r="3.5"/><circle cx="230" cy="370" r="3.5"/><circle cx="230" cy="436" r="3.5"/><circle cx="110" cy="260" r="3.5"/><circle cx="70" cy="458" r="3.5"/><circle cx="70" cy="480" r="3.5"/></g>
+<g class="blue"><rect x="470" y="40" width="170" height="180" rx="8"/>
+<text class="th" x="555" y="62" text-anchor="middle">Arduino Uno</text>
+<text class="ts" x="482" y="88">GND</text>
+<text class="ts" x="482" y="132">D3 (pin ~3)</text>
+<text class="ts" x="482" y="176">D4 (pin 4)</text>
+<text class="ts" x="482" y="198">D5 (pin ~5)</text></g>
+<g class="coral"><rect x="30" y="530" width="230" height="60" rx="8"/>
+<text class="ts" x="45" y="548" text-anchor="middle">12</text>
+<text class="ts" x="70" y="548" text-anchor="middle">10</text>
+<text class="ts" x="150" y="548" text-anchor="middle">1</text>
+<text class="th" x="145" y="574" text-anchor="middle">Car diagnostic pins</text></g>
+<text class="ts" x="300" y="470">R1 10k: b7 to b10</text>
+<text class="ts" x="300" y="490">R2 10k: c4 to c7</text>
+<text class="ts" x="300" y="510">R4 1k: c10 to c15</text>
+<text class="ts" x="300" y="530">R5 1k: d10 to d13</text>
+<text class="ts" x="300" y="550">R6 1k: b13 to b18</text>
+<line x1="480" y1="466" x2="504" y2="466" stroke="#378add" stroke-width="2"/><text class="ts" x="512" y="470">Arduino wires</text>
+<line x1="480" y1="488" x2="504" y2="488" stroke="#d85a30" stroke-width="2"/><text class="ts" x="512" y="492">Car wires</text>
+<text class="ts" x="480" y="520">No motor driver module.</text>
+<text class="ts" x="480" y="538">Nothing on Arduino 5V.</text>
+</svg>
