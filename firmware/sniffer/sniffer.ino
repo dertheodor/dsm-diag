@@ -88,7 +88,43 @@ static void capture(const char *label, uint32_t windowUs) {
   Serial.println();
 }
 
+/*
+ * Mode B: send one inverted byte and log edges from its start bit on, so the
+ * request itself is the time reference for the reply.
+ */
+static void sendCaptureInverted(uint8_t b, const char *label, uint32_t windowUs) {
+  uint16_t n = 0;
+  bool last = lineHigh();
+  bool lvl0 = last;
+  uint8_t next = 0;                              // next bit edge: 0 start, 1-8 data, 9 stop, 10 release
+  uint32_t t0 = micros();
+  for (;;) {
+    uint32_t dt = micros() - t0;
+    if (dt >= windowUs || n >= MAXE) break;
+    if (next <= 10 && dt >= next * BIT_US) {
+      if (next == 0) drvHigh();
+      else if (next <= 8) { if ((b >> (next - 1)) & 1) drvLow(); else drvHigh(); }
+      else if (next == 9) drvLow();
+      else drvRelease();
+      next++;
+    }
+    bool l = lineHigh();
+    if (l != last) { edges[n++] = micros() - t0; last = l; }
+  }
+  drvRelease();
+  Serial.print(label);
+  Serial.print(F(" lvl0="));
+  Serial.print(lvl0);
+  Serial.print(F(" n="));
+  Serial.print(n);
+  Serial.print(F(" :"));
+  for (uint16_t i = 0; i < n; i++) { Serial.print(' '); Serial.print(edges[i]); }
+  Serial.println();
+}
+
 static const uint8_t ADDRS[] = { 0xFD, 0x14, 0x21 };
+/* Read-only addresses the probe already sent without effect in normal polarity. */
+static const uint8_t ADDRS_B[] = { 0xFD, 0x14, 0x21, 0x07, 0x17, 0x00 };
 
 static void requests(char mode, void (*send)(uint8_t)) {
   char label[16];
@@ -120,6 +156,16 @@ void setup() {
   delay(50);
   capture("B-passive-1", 3000000UL);
   requests('B', sendInverted);
+
+  // Mode B detail: edges from the request's start bit on, 5 runs per address.
+  char label[16];
+  for (uint8_t a = 0; a < sizeof ADDRS_B; a++) {
+    for (uint8_t r = 0; r < 5; r++) {
+      snprintf(label, sizeof label, "BD-%02X-%u", ADDRS_B[a], r);
+      sendCaptureInverted(ADDRS_B[a], label, 40000UL);
+      delay(200);
+    }
+  }
   capture("B-passive-2", 3000000UL);
 
   Serial.println(F("SNIFFER DONE"));
