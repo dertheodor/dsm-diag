@@ -5,6 +5,12 @@ prototype. The goal is a simple cable: USB on one end, the 12-pin diagnostic
 plug on the other, like the 1G USB datalogger cables that used to be sold
 (the best-known one has been out of stock since 2018).
 
+## E935: Nano adapter
+
+The direct cable below fits only a line that idles high (US E931/E932).
+The E935 needs the bridge firmware for its allowlist and misread lock.
+Build the [Nano adapter](nano-adapter.md) for it.
+
 ## Target design: direct USB-serial cable
 
 ```
@@ -25,5 +31,5 @@ USB ── FTDI FT231X/FT232R ──┬── TX → NPN/open-collector driver �
 - [ ] 12-pin mating plug: source a used harness plug, find the Mitsubishi part
       number, or 3D-print a housing for crimp terminals
 - [ ] Enclosure inside or behind the plug
-- [ ] PCB (KiCad) vs. a small perfboard
+- [ ] PCB (KiCad) vs. a small perfboard. The [Nano adapter](nano-adapter.md) uses stripboard.
 - [ ] Optional: ESP32 version that serves the dashboard over Wi-Fi, no laptop needed
