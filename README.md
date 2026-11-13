@@ -58,6 +58,7 @@ A terminal tester is also included: `npm run cli -- /dev/ttyUSB0`.
 | `src/cli.ts` | Terminal tester |
 | `firmware/dsm_bridge/` | Arduino bridge (bit-banged 1953 baud, 5 V or 12 V wiring) |
 | `firmware/voltcheck/` | Measures the diagnostic line voltage |
+| `firmware/sniffer/` | Logs every edge on the line, for an ECU that does not reply |
 | `docs/` | Wiring, protocol, E935 notes |
 | `hardware/` | Roadmap for a standalone USB cable |
 | `test/` | Bridge firmware simulation against a virtual ECU |
