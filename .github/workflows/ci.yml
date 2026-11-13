@@ -18,5 +18,5 @@ jobs:
         run: npm run typecheck
       - name: Protocol self-test (simulated ECU)
         run: npm run selftest
-      - name: Bridge firmware simulation (5 V, 12 V and inverted wiring)
+      - name: Firmware simulation (bridge in 5 V, 12 V and inverted wiring; sniffer)
         run: npm run test:bridge

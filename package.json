@@ -27,9 +27,11 @@
     "sim": "tsx src/server/server.ts --sim",
     "sim:e935": "tsx src/server/server.ts --sim --e935",
     "cli": "tsx src/cli.ts",
+    "verify": "tsx src/verify.ts",
+    "fw": "tsx src/fw.ts",
     "selftest": "tsx src/selftest.ts",
     "typecheck": "tsc -p .",
-    "test:bridge": "g++ -O1 -std=c++17 -Wall -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DINV -DWIRING_12V -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DWIRING_INVERTED -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim",
+    "test:bridge": "g++ -O1 -std=c++17 -Wall -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DINV -DWIRING_12V -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DWIRING_INVERTED -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -x c++ test/sniffer-sim.cpp -o test/sniffer-sim && ./test/sniffer-sim",
     "test": "npm run typecheck && npm run selftest"
   },
   "dependencies": {
