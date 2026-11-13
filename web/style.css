@@ -175,3 +175,16 @@ output.err { font-family: var(--font); color: #ffb3a8; }
   .chain ol { grid-template-columns: repeat(2, 1fr); row-gap: 14px; }
   td svg { width: 70px; }
 }
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  color: var(--amber);
+  font-size: 12px;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+.badge.ok { border-color: var(--lcd); color: var(--lcd); }

@@ -4,9 +4,9 @@
  * interleave on the single-wire line.
  */
 import { EventEmitter } from 'node:events';
-import { SerialPort } from 'serialport';
 import { E935_ALLOWED, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, isBridgeAbort, type Fault, type Sensor, type Transport } from '../mmcd.js';
 import { NodeSerialTransport } from '../nodeserial.js';
+import { findAdapterPort } from '../ports.js';
 import { SimTransport, simAdapterPresent } from './sim.js';
 
 export type LinkState =
@@ -30,8 +30,6 @@ export interface Flags { t: number; bytes: Record<string, number>; on: string[] 
 
 type ClosableTransport = Transport & { onClose(cb: () => void): void; close(): Promise<void> };
 
-const USB_VENDORS = new Set(['1a86', '2341', '2a03', '0403', '10c4']); // CH340, Arduino, Arduino.org, FTDI, CP210x
-const PATH_HINT = /ttyUSB|ttyACM|usbserial|wchusbserial|usbmodem/i;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Link extends EventEmitter {
@@ -87,11 +85,7 @@ export class Link extends EventEmitter {
   private async findPort(): Promise<string | null> {
     if (this.opts.sim) return simAdapterPresent() ? 'simulated adapter' : null;
     if (this.opts.port) return this.opts.port;
-    const ports = await SerialPort.list();
-    const hit =
-      ports.find((p) => p.vendorId && USB_VENDORS.has(p.vendorId.toLowerCase())) ??
-      ports.find((p) => PATH_HINT.test(p.path));
-    return hit?.path ?? null;
+    return findAdapterPort();
   }
 
   private async discoverLoop() {
