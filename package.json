@@ -23,11 +23,13 @@
   ],
   "scripts": {
     "dashboard": "tsx src/server/server.ts",
+    "dashboard:e935": "tsx src/server/server.ts --e935",
     "sim": "tsx src/server/server.ts --sim",
+    "sim:e935": "tsx src/server/server.ts --sim --e935",
     "cli": "tsx src/cli.ts",
     "selftest": "tsx src/selftest.ts",
     "typecheck": "tsc -p .",
-    "test:bridge": "g++ -O1 -std=c++17 -Wall -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DINV -DWIRING_12V -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim",
+    "test:bridge": "g++ -O1 -std=c++17 -Wall -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DINV -DWIRING_12V -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim && g++ -O1 -std=c++17 -Wall -DWIRING_INVERTED -x c++ test/bridge-sim.cpp -o test/bridge-sim && ./test/bridge-sim",
     "test": "npm run typecheck && npm run selftest"
   },
   "dependencies": {

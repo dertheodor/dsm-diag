@@ -69,6 +69,7 @@
         <h3>Stored</h3>
         <ul id="faultsStored" class="codes"><li class="empty">Not read yet</li></ul>
         <p class="note">Clearing only works with the engine off.</p>
+        <p class="note" id="clearOff" hidden>Clearing is off in the E935 profile: the clear command 0xCA is not verified on the E935 yet.</p>
       </section>
     </div>
 
@@ -76,6 +77,8 @@
       <div class="head">
         <h2>Explore the ECU</h2>
       </div>
+      <p class="note" id="exploreOff" hidden>Explore is off in the E935 profile. To keep the ECU safe, the adapter only sends addresses verified on the E935. See docs/e935.md.</p>
+      <div id="exploreTools">
       <p class="note">Your E935 isn't documented. These views show the raw bytes, so you can see which addresses change when you rev, warm up or flip a switch.</p>
 
       <div class="tool">
@@ -107,6 +110,7 @@
         </div>
         <div class="hex" id="ramGrid" aria-label="RAM bytes"></div>
         <p class="note" id="ramNote">Read it twice to see what changed in between. Changed bytes are highlighted.</p>
+      </div>
       </div>
     </section>
 

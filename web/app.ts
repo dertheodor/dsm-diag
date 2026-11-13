@@ -5,10 +5,11 @@ type LinkState =
   | { phase: 'opening'; path: string }
   | { phase: 'no-line'; path: string; detail: string }
   | { phase: 'no-ecu'; path: string }
-  | { phase: 'online'; path: string; version: { raw: number; cpu: string } };
+  | { phase: 'online'; path: string; version: { raw: number; cpu: string } | null }
+  | { phase: 'halted'; path: string; detail: string };
 
 interface SensorMeta { id: string; name: string; addr: number; unit: string }
-interface Meta { sim: boolean; sensors: SensorMeta[]; flags: Record<string, Record<string, string>>; poll: string[]; rawMap: boolean }
+interface Meta { sim: boolean; e935: boolean; sensors: SensorMeta[]; flags: Record<string, Record<string, string>>; poll: string[]; rawMap: boolean }
 interface Sample { t: number; values: Record<string, { raw: number; value: number }>; reqPerSec: number }
 interface Fault { code: number; name: string }
 interface Faults { active: Fault[]; stored: Fault[]; t: number }
@@ -67,7 +68,8 @@ function renderState(s: LinkState) {
     case 'no-line': {
       status.adapter = 'ok';
       status.line = 'bad';
-      if (/no echo/.test(s.detail)) hint = "The Arduino doesn't hear its own signal. Check that the bridge sketch is uploaded with WIRING_12V and D3 goes to e4.";
+      if (meta?.e935) hint = e935LineHint(s.detail);
+      else if (/no echo/.test(s.detail)) hint = "The Arduino doesn't hear its own signal. Check that the bridge sketch is uploaded with WIRING_12V and D3 goes to e4.";
       else if (/got 0x00/.test(s.detail)) hint = 'The diagnostic line reads as permanently low. Turn the ignition on, and check that car pin 1 goes to a10.';
       else if (/got 0xFF/.test(s.detail)) hint = 'The line never goes low when the Arduino sends. Check D2 → IN1 and module OUT1 → e10.';
       else hint = `The signal comes back garbled (${s.detail}). Check for loose wires.`;
@@ -83,13 +85,18 @@ function renderState(s: LinkState) {
       for (const k of steps) status[k] = 'ok';
       hint = 'Connected. Reading live data.';
       break;
+    case 'halted':
+      status.adapter = 'ok';
+      status.line = 'bad';
+      hint = 'Stopped for safety: the ECU answered while the Arduino was still sending, so it may have misread the request. Switch the ignition off, then unplug and replug the Arduino.';
+      break;
   }
 
   for (const li of $('chain').querySelectorAll<HTMLLIElement>('li')) {
     li.className = status[li.dataset.step as (typeof steps)[number]];
   }
   $('port').textContent = 'path' in s ? s.path : '';
-  $('ver').textContent = s.phase === 'online' ? `version byte 0x${hex2(s.version.raw)}${s.version.cpu === 'unknown' ? '' : ` (${s.version.cpu})`}` : '';
+  $('ver').textContent = s.phase === 'online' ? versionLabel(s.version) : '';
   $('hint').textContent = hint;
   $('lcd').classList.toggle('off', !online);
   if (!online) {
@@ -97,6 +104,23 @@ function renderState(s: LinkState) {
     $('rate').textContent = '';
   }
   for (const id of ['readFaults', 'clearFaults', 'ramBtn']) $<HTMLButtonElement>(id).disabled = !online;
+  if (meta?.e935) for (const id of ['clearFaults', 'ramBtn']) $<HTMLButtonElement>(id).disabled = true;
+}
+
+/** The E935 profile never sends the version request, so it has no version byte. */
+function versionLabel(v: { raw: number; cpu: string } | null): string {
+  if (!v) return 'E935 profile';
+  return `version byte 0x${hex2(v.raw)}${v.cpu === 'unknown' ? '' : ` (${v.cpu})`}`;
+}
+
+/** Hints for the inverted wiring (docs/wiring.md). The bridge echo is already un-inverted. */
+function e935LineHint(detail: string): string {
+  if (/no echo/.test(detail))
+    return "The Arduino doesn't answer. Check that dsm_bridge is uploaded with WIRING_INVERTED, and that D3, D4 and D5 are wired.";
+  if (/got 0x00/.test(detail))
+    return 'Something holds the line high. Check that pin 10 is bridged to pin 12: without it, the ECU sends flash codes.';
+  if (/got 0xFF/.test(detail)) return 'The line never goes high when the Arduino sends. Check the D4 wire and the 1k resistor.';
+  return `The signal comes back garbled (${detail}). Check for loose wires.`;
 }
 
 /* ------------------------------------------------------------ sensors */
@@ -202,6 +226,7 @@ function renderFlags(on: string[]) {
   const ul = $('flags');
   const names = Object.values(meta.flags).flatMap((bits) => Object.values(bits));
   ul.innerHTML = '';
+  if (!names.length) ul.innerHTML = '<li class="empty">Not verified on the E935 yet</li>';
   for (const n of names) {
     const li = document.createElement('li');
     li.textContent = n;
@@ -355,6 +380,9 @@ function connect() {
   on<Meta>('meta', (m) => {
     meta = m;
     $('sim').hidden = !m.sim;
+    $('exploreOff').hidden = !m.e935;
+    $('exploreTools').hidden = m.e935;
+    $('clearOff').hidden = !m.e935;
     $<HTMLInputElement>('rawToggle').checked = m.rawMap;
     buildSensorRows(m);
     renderFlags([]);
