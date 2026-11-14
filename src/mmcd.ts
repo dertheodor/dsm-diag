@@ -55,7 +55,15 @@ export const isBridgeAbort = (e: unknown): e is ProtocolError =>
  * The hard gate is allowed() in firmware/dsm_bridge/dsm_bridge.ino (WIRING_INVERTED);
  * this copy keeps the software from asking for anything else.
  */
-export const E935_ALLOWED: ReadonlySet<number> = new Set([0x07, 0x14, 0x17, 0x21, 0x38, 0x39, 0x3b, 0x3c]);
+export const E935_ALLOWED: ReadonlySet<number> = new Set([0x02, 0x07, 0x0f, 0x13, 0x14, 0x17, 0x21, 0x38, 0x39, 0x3b, 0x3c]);
+
+/** Switch bits verified on the E935. The other US bits of 0x02 do not apply to this car (docs/e935.md). */
+export const E935_FLAGS: Readonly<Record<number, Readonly<Record<number, string>>>> = {
+  0x02: { 0x08: 'Power steering', 0x80: 'Idle switch' },
+};
+
+/** Allowed addresses whose US scaling is wrong on the E935. The profile shows their raw byte. */
+export const E935_RAW: ReadonlySet<number> = new Set([0x07]);
 
 /** Addresses that change ECU state on US ECUs: clear codes, actuator tests, strapping. */
 export const isBlocked = (addr: number) => addr === 0xca || (addr >= 0xf1 && addr <= 0xfc) || addr >= 0xfe;
@@ -200,6 +208,13 @@ export const SENSORS: readonly Sensor[] = [
   s('accenr', 'Accel enrichment', 0x1d, '%', (x) => (x * 100) / 255),
 ];
 
+/**
+ * The sensors of the E935 profile: allowed addresses only, and the raw byte where
+ * the US scaling is wrong (E935_RAW).
+ */
+export const E935_SENSORS: readonly Sensor[] = SENSORS.filter((s) => E935_ALLOWED.has(s.addr)).map((s) =>
+  E935_RAW.has(s.addr) ? { ...s, unit: 'raw', convert: (x: number) => x } : s);
+
 /** Switch flags are bits of a single byte. */
 export const FLAGS = {
   0x02: { 0x04: 'TDC', 0x08: 'Power steering', 0x10: 'A/C switch', 0x20: 'Park/Neutral', 0x80: 'Idle switch' },
@@ -257,6 +272,9 @@ export type VerifyStatus = 'confirmed' | 'plausible';
  *   plausible  live and sensible, but the scaling is not checked yet
  */
 export const E935_STATUS: ReadonlyMap<number, VerifyStatus> = new Map([
+  [0x02, 'confirmed'],
+  [0x0f, 'confirmed'],
+  [0x13, 'confirmed'],
   [0x14, 'confirmed'],
   [0x17, 'confirmed'],
   [0x21, 'confirmed'],

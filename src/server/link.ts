@@ -4,7 +4,7 @@
  * interleave on the single-wire line.
  */
 import { EventEmitter } from 'node:events';
-import { E935_ALLOWED, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, isBridgeAbort, type Fault, type Sensor, type Transport } from '../mmcd.js';
+import { E935_ALLOWED, E935_FLAGS, E935_SENSORS, Ecu, FLAGS, ProtocolError, SENSORS, decodeFaults, isBridgeAbort, type Fault, type Sensor, type Transport } from '../mmcd.js';
 import { NodeSerialTransport } from '../nodeserial.js';
 import { findAdapterPort } from '../ports.js';
 import { SimTransport, simAdapterPresent } from './sim.js';
@@ -14,6 +14,8 @@ export type LinkState =
   | { phase: 'opening'; path: string }
   | { phase: 'no-line'; path: string; detail: string }
   | { phase: 'no-ecu'; path: string }
+  /** E935 profile only: nothing is sent until the user confirms the key is ON (connectEcu). */
+  | { phase: 'key'; path: string }
   /** version is null in the E935 profile: it never sends the 0xFD version request. */
   | { phase: 'online'; path: string; version: { raw: number; cpu: string } | null }
   /** The ECU misread a request. Nothing is sent until the adapter is plugged in again. */
@@ -37,7 +39,7 @@ export class Link extends EventEmitter {
   /** Sensors this profile may poll. */
   readonly sensors: readonly Sensor[];
   /** Switch flag bytes this profile may poll. */
-  readonly flags: Partial<typeof FLAGS>;
+  readonly flags: Readonly<Record<number, Readonly<Record<number, string>>>>;
   pollIds: Set<string>;
 
   private t: ClosableTransport | null = null;
@@ -52,8 +54,8 @@ export class Link extends EventEmitter {
    */
   constructor(private readonly opts: { sim: boolean; port?: string; e935: boolean }) {
     super();
-    this.sensors = opts.e935 ? SENSORS.filter((s) => E935_ALLOWED.has(s.addr)) : SENSORS;
-    this.flags = opts.e935 ? {} : FLAGS;
+    this.sensors = opts.e935 ? E935_SENSORS : SENSORS;
+    this.flags = opts.e935 ? E935_FLAGS : FLAGS;
     const defaults = ['rpm', 'tps', 'timing', 'ect', 'iat', 'batt', 'o2', 'injpw'];
     this.pollIds = new Set(defaults.filter((id) => this.sensors.some((s) => s.id === id)));
   }
@@ -120,7 +122,19 @@ export class Link extends EventEmitter {
       this.setState({ phase: 'searching' });
     });
     this.emit('log', `Adapter found at ${path}`);
-    void this.sessionLoop(gen, path);
+    if (this.opts.e935) this.setState({ phase: 'key', path });
+    else void this.sessionLoop(gen, path);
+  }
+
+  /**
+   * E935 profile: start the session after the user confirmed that the key is ON.
+   * A request while the ECU powers up collides with its power-on pulse on pin 1.
+   */
+  async connectEcu() {
+    const s = this.state;
+    if (!this.opts.e935 || (s.phase !== 'key' && s.phase !== 'no-line') || !this.ecu || this.sessionRunning)
+      throw new Error('Nothing to connect: the adapter is not waiting for the key.');
+    void this.sessionLoop(this.gen, s.path);
   }
 
   /* ------------------------------------------------------------ session */
@@ -136,7 +150,22 @@ export class Link extends EventEmitter {
     return null;
   }
 
+  private sessionRunning = false;
+
+  /**
+   * Probe, then poll. The US profile retries on its own. The E935 profile stops
+   * after one failure and waits for connectEcu(): the ECU may be off or powering up.
+   */
   private async sessionLoop(gen: number, path: string) {
+    this.sessionRunning = true;
+    try {
+      await this.session(gen, path);
+    } finally {
+      this.sessionRunning = false;
+    }
+  }
+
+  private async session(gen: number, path: string) {
     while (this.alive(gen)) {
       // Probe until the ECU answers.
       try {
@@ -146,11 +175,12 @@ export class Link extends EventEmitter {
       } catch (e) {
         if (!this.alive(gen)) return;
         this.reportFailure(e, path);
-        if (!this.alive(gen)) return;
+        if (!this.alive(gen) || this.opts.e935) return;
         await sleep(1500);
         continue;
       }
       await this.pollLoop(gen, path);
+      if (this.opts.e935) return;
     }
   }
 
@@ -163,6 +193,9 @@ export class Link extends EventEmitter {
       this.ecu = null;
       this.emit('log', `Stopped for safety: ${e.message}`);
       this.setState({ phase: 'halted', path, detail: e.message });
+    } else if (e instanceof ProtocolError && e.kind === 'no-reply' && this.opts.e935) {
+      this.emit('log', 'No reply from the ECU. Turn the key ON, then click Connect.');
+      this.setState({ phase: 'key', path });
     } else if (e instanceof ProtocolError && e.kind === 'no-reply') {
       if (this.state.phase !== 'no-ecu') this.setState({ phase: 'no-ecu', path });
     } else {

@@ -1,10 +1,10 @@
 /** Offline self-test against a simulated ECU (echo + 1-byte reply). Run: npx tsx src/selftest.ts */
 import { readFileSync } from 'node:fs';
 import {
-  E935_ALLOWED, E935_CANDIDATES, E935_STATUS, Ecu, MIN_BIT_ERRORS, ProtocolError, SENSORS,
+  E935_ALLOWED, E935_CANDIDATES, E935_FLAGS, E935_SENSORS, E935_STATUS, Ecu, MIN_BIT_ERRORS, ProtocolError, SENSORS,
   bitErrorsToBlocked, isBridgeAbort, type Transport,
 } from './mmcd.js';
-import { parseAddressList, parseVerifyLine, usValue } from './verify-format.js';
+import { NoReplyGuard, parseAddressList, parseVerifyLine, usValue } from './verify-format.js';
 
 class FakeEcu implements Transport {
   private q: number[] = [];
@@ -72,6 +72,17 @@ check(bitErrorsToBlocked(0xfd) === 1 && bitErrorsToBlocked(0x3a) === 2 && bitErr
 check([...E935_CANDIDATES].every((a) => bitErrorsToBlocked(a) >= MIN_BIT_ERRORS), 'every candidate meets the bit-error rule');
 check([...E935_ALLOWED].every((a) => E935_CANDIDATES.has(a)), 'every allowed address is a candidate');
 check([...E935_STATUS.keys()].every((a) => E935_ALLOWED.has(a)), 'every status belongs to an allowed address');
+check(Object.keys(E935_FLAGS).every((a) => E935_ALLOWED.has(Number(a))), 'every E935 flag byte is allowed');
+check(E935_SENSORS.every((x) => E935_ALLOWED.has(x.addr)), 'every E935 sensor is allowed');
+const ect = E935_SENSORS.find((x) => x.addr === 0x07);
+check(ect?.unit === 'raw' && ect.convert(0x1f) === 0x1f, 'E935 coolant shows the raw byte');
+
+/* The verify tool stops when the ECU stops replying. */
+const guard = new NoReplyGuard(2);
+const results = [true, false, false, false, false, false, false].map((r) => guard.record(r));
+check(results.lastIndexOf(false) === 5 && results[6], 'verify: stops after 3 rounds without a reply');
+const guard2 = new NoReplyGuard(1);
+check(![false, false, true, false, false].some((r) => guard2.record(r)), 'verify: a reply resets the count');
 
 /* Verify tool parsing. */
 const v = parseVerifyLine('V 14 A8');

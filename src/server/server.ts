@@ -101,6 +101,7 @@ const api: Record<string, (body: any) => Promise<unknown>> = {
     if (typeof b.rawMap === 'boolean') link.rawMap = b.rawMap;
     return { poll: [...link.pollIds], rawMap: link.rawMap };
   },
+  '/api/connect': async () => link.connectEcu(),
   '/api/faults': async () => link.readFaults(),
   '/api/clear-faults': async () => link.clearFaults(),
   '/api/read': async (b: { addr: number }) => ({ addr: b.addr, value: await link.readAddress(Number(b.addr)) }),

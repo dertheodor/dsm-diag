@@ -12,7 +12,7 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 import { SerialPort } from 'serialport';
 import { hex } from './mmcd.js';
 import { findAdapterPort } from './ports.js';
-import { meaning, parseAddressList, parseVerifyLine, statusOf, usValue } from './verify-format.js';
+import { NoReplyGuard, meaning, parseAddressList, parseVerifyLine, statusOf, usValue } from './verify-format.js';
 
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -45,6 +45,9 @@ let buf = '';
 let started = false;
 let stopping = false;
 let lastRender = 0;
+/** Set when the tool stops the sniffer itself; reported once the sniffer confirms. */
+let stopReason: string | undefined;
+const guard = new NoReplyGuard(addrs.length);
 
 function render(force = false) {
   const now = Date.now();
@@ -70,6 +73,15 @@ function fail(text: string): never {
   return undefined as never;
 }
 
+/** Stop the sniffer's request loop, then exit with text. */
+function stopWith(text: string) {
+  if (stopping) return;
+  stopping = true;
+  stopReason = text;
+  port.write('s');
+  setTimeout(() => fail(text), 1500);
+}
+
 function onLine(line: string) {
   const l = parseVerifyLine(line);
   switch (l.kind) {
@@ -82,6 +94,7 @@ function onLine(line: string) {
     case 'value': {
       const s = stats.get(l.addr);
       if (!s) return;
+      if (guard.record(l.raw !== null)) stopWith('No reply from the ECU. Turn the key ON first, then start verify again.');
       if (l.raw === null) {
         if (l.framing) s.framing++; else s.missing++;
       } else {
@@ -101,6 +114,7 @@ function onLine(line: string) {
     case 'locked':
       return fail('The sniffer is locked after a misread. Unplug and replug the Arduino.');
     case 'stop':
+      if (stopReason) return fail(stopReason);
       render(true);
       port.close(() => process.exit(0));
       return;

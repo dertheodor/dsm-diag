@@ -5,6 +5,7 @@ type LinkState =
   | { phase: 'opening'; path: string }
   | { phase: 'no-line'; path: string; detail: string }
   | { phase: 'no-ecu'; path: string }
+  | { phase: 'key'; path: string }
   | { phase: 'online'; path: string; version: { raw: number; cpu: string } | null }
   | { phase: 'halted'; path: string; detail: string };
 
@@ -81,6 +82,11 @@ function renderState(s: LinkState) {
       status.ecu = 'wait';
       hint = "The line works, but the ECU doesn't answer. Turn the ignition on (engine can stay off) and bridge pin 10 to pin 12.";
       break;
+    case 'key':
+      status.adapter = 'ok';
+      status.ecu = 'wait';
+      hint = 'Turn the key ON (the engine can stay off), then click the button. The E935 profile sends nothing before that.';
+      break;
     case 'online':
       for (const k of steps) status[k] = 'ok';
       hint = 'Connected. Reading live data.';
@@ -103,6 +109,7 @@ function renderState(s: LinkState) {
     for (const v of $('lcd').querySelectorAll('.v')) v.textContent = '–';
     $('rate').textContent = '';
   }
+  $('connectBtn').hidden = !(meta?.e935 && (s.phase === 'key' || s.phase === 'no-line'));
   for (const id of ['readFaults', 'clearFaults', 'ramBtn']) $<HTMLButtonElement>(id).disabled = !online;
   if (meta?.e935) for (const id of ['clearFaults', 'ramBtn']) $<HTMLButtonElement>(id).disabled = true;
 }
@@ -262,6 +269,10 @@ function renderFaults(f: Faults) {
   fill($('faultsActive'), f.active);
   fill($('faultsStored'), f.stored);
 }
+
+$('connectBtn').addEventListener('click', async () => {
+  try { await post('/api/connect'); } catch (e) { log(`Connect failed: ${(e as Error).message}`); }
+});
 
 $('readFaults').addEventListener('click', async () => {
   try { renderFaults(await post<Faults>('/api/faults')); log('Fault codes read'); }
