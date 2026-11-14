@@ -3,6 +3,7 @@ dist/
 
 # Logs and dumps you record from your own car
 *.csv
+!docs/e935-logs/*.csv
 ram-*.json
 e935-ram-*.json
 
