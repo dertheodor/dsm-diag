@@ -12,7 +12,7 @@
  * Bring-up order: version → battery (compare with a multimeter) → faults → live polling.
  */
 import { writeFileSync } from 'node:fs';
-import { E935_ALLOWED, Ecu, SENSORS, hex, isBridgeAbort } from './mmcd.js';
+import { E935_ALLOWED, E935_SENSORS, Ecu, ProtocolError, SENSORS, hex, isBridgeAbort } from './mmcd.js';
 import { NodeSerialTransport } from './nodeserial.js';
 
 const args = process.argv.slice(2);
@@ -27,7 +27,7 @@ if (e935 && args.includes('--dump')) {
   console.error('--dump is off in the E935 profile: it reads unverified addresses.');
   process.exit(1);
 }
-const available = e935 ? SENSORS.filter((s) => E935_ALLOWED.has(s.addr)) : SENSORS;
+const available = e935 ? E935_SENSORS : SENSORS;
 const sensorArg = args[args.indexOf('--sensors') + 1];
 const sensors = args.includes('--sensors')
   ? available.filter((s) => sensorArg.split(',').includes(s.id))
@@ -71,6 +71,11 @@ for (;;) {
     } catch (e) {
       if (e935 && isBridgeAbort(e)) {
         console.error(`\nStopped for safety, the ECU may have misread a request: ${e.message}`);
+        await t.close();
+        process.exit(1);
+      }
+      if (e935 && e instanceof ProtocolError && e.kind === 'no-reply') {
+        console.error('\nNo reply from the ECU. Turn the key ON, then start the CLI again.');
         await t.close();
         process.exit(1);
       }

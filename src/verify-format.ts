@@ -70,3 +70,19 @@ export function statusOf(addr: number): string {
   if (!E935_ALLOWED.has(addr)) return 'candidate';
   return E935_STATUS.get(addr) ?? 'allowed';
 }
+
+/**
+ * Stops a verify run when the ECU stops replying, for example when the key is off.
+ * A request during the ECU's power-up collides with its power-on pulse on pin 1.
+ */
+export class NoReplyGuard {
+  private misses = 0;
+  /** rounds: full passes over the address list without a single reply. */
+  constructor(private readonly addresses: number, private readonly rounds = 3) {}
+
+  /** Record one result. Returns true when the run must stop. */
+  record(reply: boolean): boolean {
+    this.misses = reply ? 0 : this.misses + 1;
+    return this.misses >= this.addresses * this.rounds;
+  }
+}

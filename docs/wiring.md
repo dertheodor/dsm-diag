@@ -103,7 +103,10 @@ Rules:
 - Run the laptop on its battery, not on a mains charger, to avoid a ground loop through the car.
 
 In `firmware/dsm_bridge/dsm_bridge.ino`, set `#define WIRING_INVERTED` and upload.
-Then start the dashboard with `npm run dashboard:e935`.
+Then start the dashboard with `npm run dashboard:e935`. It sends nothing until you
+turn the key ON and click **Key is ON: connect**. If the ECU stops replying, the
+dashboard waits for that click again. A request while the ECU powers up collides
+with its power-on pulse on pin 1, and the firmware aborts.
 
 The firmware sends only the addresses verified on the E935, and the dashboard
 offers only those. If the ECU drives the line while the Arduino sends, the ECU

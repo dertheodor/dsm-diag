@@ -72,6 +72,7 @@ const uint8_t PD_PIN = 5;
 static bool allowed(uint8_t a) {
   switch (a) {
     case 0x07: case 0x14: case 0x17: case 0x21:   // coolant, battery, throttle, rpm
+    case 0x02: case 0x13: case 0x0F:              // switch flags, O2 sensor, O2 feedback trim
     case 0x38: case 0x39: case 0x3B: case 0x3C:   // fault code words
       return true;
     default:

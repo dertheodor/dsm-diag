@@ -86,6 +86,7 @@ button.on { background: var(--amber); color: #2a1a04; border-color: var(--amber)
 }
 @keyframes blink { 50% { border-color: var(--rule); } }
 .hint { margin-top: 14px; font-size: 17px; max-width: 75ch; }
+#connectBtn { margin-top: 10px; }
 
 /* ------------------------------------------------------------------- LCD */
 .lcd {

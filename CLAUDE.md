@@ -44,6 +44,7 @@ The E935 profile adds an allowlist. [docs/e935.md](docs/e935.md#allowlist) owns 
 - The sniffer sends only `CANDIDATES`. They must match `E935_CANDIDATES`, which derives them from the bit-error rule. The self-test checks this too.
 - Never add an address that is not verified on the car, or that is fewer than two bit errors from 0xCA, 0xF1–0xFC, 0xFE or 0xFF.
 - Keep the misread abort. The bridge locks itself and answers with an inverted echo; `isBridgeAbort()` halts the software. Do not retry or resume after it.
+- Send nothing in the E935 profile until the user confirms the key is ON. After a no-reply, wait for the user again. Do not retry on your own.
 - Explore, RAM dumps, address reads and Clear codes stay off in the E935 profile until the E935 map is verified.
 - Do not connect the ULN2003 module to an inverted line. It can short the ECU output.
 
