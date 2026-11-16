@@ -9,6 +9,8 @@ USB-serial cable has neither, so the E935 needs this microcontroller adapter.
 
 ![Stripboard layout](nano-adapter.svg)
 
+A factory-made board of the same circuit is in [kicad/](kicad/README.md).
+
 `nano-adapter.py` draws the SVG. Before it draws, it checks the layout against
 the circuit. Run `python3 hardware/nano-adapter.py > hardware/nano-adapter.svg`
 after every change.
