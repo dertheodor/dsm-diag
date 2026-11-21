@@ -1741,8 +1741,8 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "920df174-d682-5828-a771-39d683a48678")
-		(property "Reference" "R6"
+		(uuid "46df39d4-3d36-5af9-b651-de6c9f3fce61")
+		(property "Reference" "R5"
 			(at 53.34 74.93 0)
 			(effects
 				(font
@@ -1750,7 +1750,7 @@
 				)
 			)
 		)
-		(property "Value" "1k"
+		(property "Value" "2k"
 			(at 53.34 77.47 0)
 			(effects
 				(font
@@ -1777,84 +1777,6 @@
 			)
 		)
 		(pin "1"
-			(uuid "69c6a2c6-adf0-5f7d-b9d7-6492da9d89fa")
-		)
-		(pin "2"
-			(uuid "5bf5f965-18cc-5b77-ad51-23ba6b9e5202")
-		)
-		(instances
-			(project "dsm-adapter"
-				(path "/6f1c2a0e-5d3b-4c8e-9a71-2b4d8e0f1c35"
-					(reference "R6")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(label "D5"
-		(at 50.80 72.39 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left bottom)
-			)
-		(uuid "c1fa0ba4-e0a4-5cd1-84ed-2e34e207a2c1")
-	)
-	(label "N_PD"
-		(at 50.80 80.01 270)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right bottom)
-			)
-		(uuid "0e89fa74-1b32-5ce3-9817-d011fd5d9404")
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 50.80 96.52 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "46df39d4-3d36-5af9-b651-de6c9f3fce61")
-		(property "Reference" "R5"
-			(at 53.34 95.25 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "1k"
-			(at 53.34 97.79 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
-			(at 50.80 96.52 0)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 50.80 96.52 0)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
 			(uuid "1a5810d1-66bd-5127-8aa8-1d8e4a2d3206")
 		)
 		(pin "2"
@@ -1869,8 +1791,8 @@
 			)
 		)
 	)
-	(label "N_PD"
-		(at 50.80 92.71 90)
+	(label "D5"
+		(at 50.80 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1880,7 +1802,7 @@
 		(uuid "e50eb7d2-99a9-526a-b29e-6e710f3a9d02")
 	)
 	(label "LINE"
-		(at 50.80 100.33 270)
+		(at 50.80 80.01 270)
 			(effects
 				(font
 					(size 1.27 1.27)

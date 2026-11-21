@@ -118,8 +118,7 @@ ROW_RX, ROW_TX, ROW_PD = 17.0, pad_y(7), 37.0
 footprint("Resistor_THT", R, "R2", "10k", 25.16, ROW_RX, 180, {"1": "/D3", "2": "/N_RX"})
 footprint("Resistor_THT", R, "R1", "10k", 12.16, ROW_RX, 180, {"1": "/N_RX", "2": "/LINE"})
 footprint("Resistor_THT", R, "R4", "1k", 25.16, ROW_TX, 180, {"1": "/D4", "2": "/LINE"})
-footprint("Resistor_THT", R, "R6", "1k", 25.16, ROW_PD, 180, {"1": "/D5", "2": "/N_PD"})
-footprint("Resistor_THT", R, "R5", "1k", 12.16, ROW_PD, 180, {"1": "/N_PD", "2": "/LINE"})
+footprint("Resistor_THT", R, "R5", "2k", 25.16, ROW_PD, 180, {"1": "/D5", "2": "/LINE"})
 
 # Screw terminal at 180°: the wire enters from the top edge. Pad 1 right (GND), pad 2 left (LINE).
 J = "TerminalBlock_Phoenix_MKDS-1,5-2_1x02_P5.00mm_Horizontal"
@@ -132,10 +131,9 @@ for i, (x, y) in enumerate([(3.5, 3.5), (3.5, 51.5), (44.5, 3.5)], 1):
     h.Reference().SetVisible(False)
 
 # Signals on the top layer.
-track([(11, 6), (11, 11), (2, 11), (2, ROW_PD)], "/LINE", 0.6)
+track([(11, 6), (11, 11), (2, 11), (2, ROW_PD), (15, ROW_PD)], "/LINE", 0.6)
 track([(15, ROW_TX), (2, ROW_TX)], "/LINE", 0.6)
 track([(12.16, ROW_RX), (15, ROW_RX)], "/N_RX")
-track([(12.16, ROW_PD), (15, ROW_PD)], "/N_PD")
 track([(25.16, ROW_RX), (27.6, ROW_RX), (27.6, pad_y(6) - 2.4), (NANO_X, pad_y(6))], "/D3")
 track([(25.16, ROW_TX), (NANO_X, ROW_TX)], "/D4")
 track([(25.16, ROW_PD), (27.6, ROW_PD), (27.6, pad_y(8) + 2.4), (NANO_X, pad_y(8))], "/D5")
@@ -160,8 +158,7 @@ text("pin 12", 16, 12.9, 0.9)
 text("10k", 7.08, ROW_RX - 2.2)
 text("10k", 20.08, ROW_RX - 2.2)
 text("1k", 20.08, ROW_TX - 2.2)
-text("1k", 7.08, ROW_PD - 2.2)
-text("1k", 20.08, ROW_PD - 2.2)
+text("2k", 20.08, ROW_PD - 2.2)
 text("dsm-diag E935 adapter", 13, 44.5, 1.2)
 text("WIRING_INVERTED", 13, 46.8, 1.0)
 

@@ -39,7 +39,8 @@ Upload the zip to JLCPCB, PCBWay or Aisler. The defaults fit:
 |---|---|
 | A1 | Arduino Nano or clone, ATmega328P at 16 MHz. Use two 15-pin female headers, 2.54 mm, so the Nano stays removable. |
 | R1, R2 | 10k, 1/4 W, 0207 body |
-| R4, R5, R6 | 1k, 1/4 W, 0207 body |
+| R4 | 1k, 1/4 W, 0207 body |
+| R5 | 2k, 1/4 W, 0207 body |
 | J1 | 2-pin screw terminal, 5.0 mm pitch (Phoenix MKDS 1,5/2 footprint) |
 | H1–H3 | M3 holes for a housing |
 

@@ -31,5 +31,5 @@ USB ── FTDI FT231X/FT232R ──┬── TX → NPN/open-collector driver �
 - [ ] 12-pin mating plug: source a used harness plug, find the Mitsubishi part
       number, or 3D-print a housing for crimp terminals
 - [ ] Enclosure inside or behind the plug
-- [x] PCB (KiCad) vs. a small perfboard: both exist. See [the stripboard layout](nano-adapter.md) and [the PCB](kicad/README.md).
+- [x] PCB (KiCad) vs. a small perfboard: both exist. See [the perfboard layout](nano-adapter.md) and [the PCB](kicad/README.md).
 - [ ] Optional: ESP32 version that serves the dashboard over Wi-Fi, no laptop needed

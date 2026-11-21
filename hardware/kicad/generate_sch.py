@@ -61,8 +61,7 @@ PARTS = [
     ("R2", "Device:R", "10k", FP_R, 101.6, 76.2, {"1": "D3", "2": "N_RX"}),
     ("R1", "Device:R", "10k", FP_R, 101.6, 96.52, {"1": "N_RX", "2": "LINE"}),
     ("R4", "Device:R", "1k", FP_R, 76.2, 76.2, {"1": "D4", "2": "LINE"}),
-    ("R6", "Device:R", "1k", FP_R, 50.8, 76.2, {"1": "D5", "2": "N_PD"}),
-    ("R5", "Device:R", "1k", FP_R, 50.8, 96.52, {"1": "N_PD", "2": "LINE"}),
+    ("R5", "Device:R", "2k", FP_R, 50.8, 76.2, {"1": "D5", "2": "LINE"}),
     ("J1", "Connector:Screw_Terminal_01x02", "Car pin 12, pin 1", FP_J, 63.5, 127.0, {"1": "GND", "2": "LINE"}),
     ("#FLG01", "power:PWR_FLAG", "PWR_FLAG", "", 152.4, 139.7, {"1": "GND"}),
 ]
