@@ -1,45 +1,46 @@
 """Perfboard layout for the Nano E935 adapter: checks the netlist, then writes the SVG.
 
-The board is a PY 5 cm x 7 cm perfboard, every pad isolated. Seen from the component side:
-24 columns A-X from left to right, 18 rows 01-18 from top to bottom. A hole is "H11": column H, row 11.
-Copper-side solder trails make all connections.
+The board is a single-sided PY 5 cm x 7 cm perfboard, every pad isolated. Seen from the copper side
+(the printed side with the pads): 24 columns A-X from left to right, 18 rows 01-18 from top to bottom.
+A hole is "Q11": column Q, row 11. The parts sit on the bare side. Copper-side solder trails make all connections.
 """
 import sys
 
-LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWX"   # columns, left to right
+LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWX"   # columns, left to right on the copper side
 ROWS = 18                              # rows 01-18, top to bottom
-# Nano lying flat, USB to the left past column A. Headers on rows 11 and 17, columns A-O.
+# Seen from the component side: Nano lying flat, USB to the left past column X.
+# Headers on rows 11 and 17, columns X-J.
 NANO_D_ROW, NANO_A_ROW = 11, 17
 NANO_D = ["D12", "D11", "D10", "D9", "D8", "D7", "D6", "D5", "D4", "D3", "D2", "GND", "RST", "RX0", "TX1"]
 NANO_A = ["D13", "3V3", "REF", "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "5V", "RST", "GND", "VIN"]
 
 
 def holes(spec):
-    """Turns "H11 H10" into [("H", 11), ("H", 10)]."""
+    """Turns "Q11 Q10" into [("Q", 11), ("Q", 10)]."""
     return [(h[0], int(h[1:])) for h in spec.split()]
 
 
 # (name, value, hole, hole)
 RES = [
-    ("R5", "2k", ("G", 9), ("G", 5)),
-    ("R4", "1k", ("I", 9), ("I", 5)),
-    ("R2", "10k", ("J", 9), ("N", 9)),
-    ("R1", "10k", ("P", 9), ("P", 5)),
+    ("R5", "2k", ("R", 9), ("R", 5)),
+    ("R4", "1k", ("P", 9), ("P", 5)),
+    ("R2", "10k", ("O", 9), ("K", 9)),
+    ("R1", "10k", ("I", 9), ("I", 5)),
 ]
 # Copper-side solder trails. Each one bridges neighbouring pads in order.
 TRAILS = [holes(t) for t in (
-    "H11 H10 H09 G09",
-    "I11 I10 I09",
-    "J11 J10 J09",
-    "N09 O09 P09",
-    "G05 H05 I05 J05 K05 L05 M05 N05 O05 P05",
-    "L11 L10 L09 L08 L07",
+    "Q11 Q10 Q09 R09",
+    "P11 P10 P09",
+    "O11 O10 O09",
+    "K09 J09 I09",
+    "R05 Q05 P05 O05 N05 M05 L05 K05 J05 I05",
+    "M11 M10 M09 M08 M07",
 )]
-WIRES = [("car pin 1", ("K", 5)), ("car pin 12", ("L", 7))]
+WIRES = [("car pin 1", ("N", 5)), ("car pin 12", ("M", 7))]
 
 # ---------- Netlist check ----------
 nano = {}
-for i, col in enumerate(LETTERS[:15]):
+for i, col in enumerate(LETTERS[::-1][:15]):
     nano[(col, NANO_D_ROW)] = f"nano.{NANO_D[i]}"
     nano[(col, NANO_A_ROW)] = f"nano.A-side {NANO_A[i]}"
 
@@ -87,7 +88,7 @@ for h, n in nano.items():
         assert find(h) not in reps, f"{n} shorted to a used net"
 
 # Clearance: pads of different nets must not be neighbours, so a solder blob cannot bridge them.
-# The only exception is the fan-out from D5, D4 and D3 (columns H-J, rows 09-11), at header pitch.
+# The only exception is the fan-out from D5, D4 and D3 (columns O-Q, rows 09-11), at header pitch.
 used = set(nano) | set(legs) | {h for t in TRAILS for h in t}
 for (c, r) in used:
     right = LETTERS[LETTERS.index(c) + 1] if c != LETTERS[-1] else None
@@ -96,7 +97,7 @@ for (c, r) in used:
             continue
         if (c, r) in nano and nb in nano:
             continue
-        fan_out = all(h[0] in "HIJ" and h[1] >= 9 for h in ((c, r), nb))
+        fan_out = all(h[0] in "OPQ" and h[1] >= 9 for h in ((c, r), nb))
         assert fan_out, f"{c}{r:02d} and {nb[0]}{nb[1]:02d} are neighbours on different nets"
 print("netlist OK", file=sys.stderr)
 
@@ -122,10 +123,10 @@ add('''<style>
 add(f'<rect width="{W}" height="{H}" fill="#ffffff"/>')
 
 
-def panel(ox, mirrored, title):
+def panel(ox, copper, title):
     def xy(col, row):
         i = LETTERS.index(col)
-        x = NC - 1 - i if mirrored else i
+        x = i if copper else NC - 1 - i
         return ox + X0 + x * P, Y0 + (row - 1) * P
     add(f'<text class="th" x="{ox + X0 - 10}" y="22">{title}</text>')
     add(f'<rect x="{ox + X0 - 16}" y="{Y0 - 16}" width="{(NC - 1) * P + 32}" height="{(ROWS - 1) * P + 32}" rx="4" fill="#3f7f5a" stroke="#2a5a3e"/>')
@@ -142,25 +143,25 @@ def panel(ox, mirrored, title):
         for col in LETTERS:
             x, y = xy(col, row)
             add(f'<circle cx="{x}" cy="{y}" r="6" fill="#d9a066"/><circle cx="{x}" cy="{y}" r="2.4" fill="#ffffff"/>')
-    if not mirrored:
+    if not copper:
         draw_parts(xy)
         return
     for t in TRAILS:
         pts = " ".join(f"{x},{y}" for x, y in (xy(*h) for h in t))
         add(f'<polyline points="{pts}" fill="none" stroke="#9a9a96" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>')
-    for h in sorted(used - set(nano)) + [(c, NANO_D_ROW) for c in "HIJL"]:
+    for h in sorted(used - set(nano)) + [(c, NANO_D_ROW) for c in "QPOM"]:
         x, y = xy(*h)
         add(f'<circle cx="{x}" cy="{y}" r="4.5" fill="#5f5e5a"/>')
 
 
 def draw_parts(xy):
-    xa, ya = xy("A", NANO_D_ROW)
-    xb, yb = xy("O", NANO_A_ROW)
+    xa, ya = xy("X", NANO_D_ROW)
+    xb, yb = xy("J", NANO_A_ROW)
     add(f'<rect x="{xa - 34}" y="{ya - 15}" width="{xb - xa + 46}" height="{yb - ya + 30}" rx="3" fill="#dbe6f3" fill-opacity="0.92" stroke="#185fa5"/>')
     add(f'<rect x="{xa - 48}" y="{ya + 34}" width="26" height="{yb - ya - 68}" rx="2" fill="#b4b2a9" stroke="#5f5e5a"/>')
     add(f'<text class="lb" x="{xa - 35}" y="{(ya + yb) / 2}" text-anchor="middle" transform="rotate(-90 {xa - 35} {(ya + yb) / 2})">USB</text>')
     add(f'<text class="th" x="{(xa + xb) / 2}" y="{(ya + yb) / 2 + 5}" text-anchor="middle" fill="#0c447c">Nano</text>')
-    for i, col in enumerate(LETTERS[:15]):
+    for i, col in enumerate(LETTERS[::-1][:15]):
         for row, names, anchor, dy in ((NANO_D_ROW, NANO_D, "end", 8), (NANO_A_ROW, NANO_A, "start", -8)):
             x, y = xy(col, row)
             add(f'<rect x="{x - 4}" y="{y - 4}" width="8" height="8" fill="#5f5e5a"/>')
@@ -188,15 +189,15 @@ def draw_parts(xy):
         _, y_end = xy(h[0], 1)
         add(f'<circle cx="{x}" cy="{y}" r="4" fill="{c}"/>')
         add(f'<line x1="{x}" y1="{y}" x2="{x}" y2="{y_end - 50}" stroke="{c}" stroke-width="2.5"/>')
-    _, y_end = xy("K", 1)
-    xk, _ = xy("K", 1)
-    xl, _ = xy("L", 1)
+    _, y_end = xy("N", 1)
+    xk, _ = xy("N", 1)
+    xl, _ = xy("M", 1)
     add(f'<text class="ts" x="{xk - 6}" y="{y_end - 40}" text-anchor="end">car pin 1</text>')
     add(f'<text class="ts" x="{xl + 6}" y="{y_end - 40}">car pin 12</text>')
 
 
-panel(0, False, "Component side")
-panel(PANEL_W + GAP, True, "Copper side (board flipped left to right)")
+panel(0, False, "Component side (bare side, seen from above)")
+panel(PANEL_W + GAP, True, "Copper side (printed side with the pads)")
 ly = H - 26
 add(f'<line x1="{X0}" y1="{ly}" x2="{X0 + 30}" y2="{ly}" stroke="#9a9a96" stroke-width="7" stroke-linecap="round"/>')
 add(f'<text class="ts" x="{X0 + 42}" y="{ly + 4}">solder trail: bridge the neighbouring pads, or solder a bare wire across them</text>')
