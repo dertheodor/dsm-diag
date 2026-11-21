@@ -102,6 +102,9 @@ Rules:
 - **Disconnect in this order:** stop the software, key off, unplug.
 - Run the laptop on its battery, not on a mains charger, to avoid a ground loop through the car.
 
+For a permanent version, solder the same circuit on a perfboard with a Nano:
+[hardware/nano-adapter.md](../hardware/nano-adapter.md).
+
 In `firmware/dsm_bridge/dsm_bridge.ino`, set `#define WIRING_INVERTED` and upload.
 Then start the dashboard with `npm run dashboard:e935`. It sends nothing until you
 turn the key ON and click **Key is ON: connect**. If the ECU stops replying, the
