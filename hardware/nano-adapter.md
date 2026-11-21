@@ -20,7 +20,7 @@ after every change.
 | Part | Note |
 |---|---|
 | Arduino Nano or clone, ATmega328P, 16 MHz | With pin headers |
-| Perfboard PY 5 cm × 7 cm, 18 columns (01–18) × 24 rows (A–X), 0.1" pitch | Every pad is isolated. |
+| Perfboard PY 5 cm × 7 cm, 24 columns (A–X) × 18 rows (01–18), 0.1" pitch | Every pad is isolated. |
 | R1, R2: 10k | 1/4 W, laid flat with 0.4" lead spacing |
 | R4: 1k | The same |
 | R5: 2k | The same |
@@ -30,18 +30,18 @@ after every change.
 
 ## Build
 
-1. Hold the board with the component side up, row A at the top and column 01 at the left.
-2. Find the Nano header with D2–D12. Its pins go in column 08, rows A–O. The USB socket points past row A.
-3. Compare the Nano labels with the drawing. D5, D4, D3 and GND must be in holes H08, I08, J08 and L08.
+1. Hold the board with the component side up: column A at the left, row 01 at the top.
+2. Find the Nano header with D2–D12. Its pins go in row 11, columns A–O. The USB socket points left, past column A.
+3. Compare the Nano labels with the drawing. D5, D4, D3 and GND must be in holes H11, I11, J11 and L11.
 4. Solder the Nano.
 5. Put in the resistors and the two car wires as the component-side view shows. Solder their legs.
 6. Turn the board over. Make every solder trail of the copper-side view.
 7. For a trail of two or three pads, bridge the neighbouring pads with solder.
-8. For the longer trails in column 14 and row L, lay a bare wire across the pads. Solder it at every pad.
-9. Check the trails in rows H, I and J next to the Nano. They are close, and must not touch each other.
+8. For the longer trails in row 05 and column L, lay a bare wire across the pads. Solder it at every pad.
+9. Check the trails in columns H, I and J next to the Nano. They are close, and must not touch each other.
 10. Wire the plug: the pin 1 wire to pin 1, the pin 12 wire to pin 12.
 11. Bridge pin 10 to pin 12 inside the plug.
-12. Fix the cable to the board with a cable tie through free holes, for example in rows R–T.
+12. Fix the cable to the board with a cable tie through free holes, for example in rows 01–03.
 
 ## Check before the car
 
