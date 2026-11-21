@@ -33,12 +33,12 @@ after every change.
 The parts go on the bare side. All soldering is on the printed side with the pads.
 
 1. Hold the board with the bare side up: row 01 at the top, column X at the left.
-2. Find the Nano header with D2–D12. Its pins go in row 11, columns X–J. The USB socket points left, past column X.
+2. If the pin headers are loose, solder them to the Nano first. Find the Nano header with D2–D12. Its pins go in row 11, columns X–J. The USB socket points left, past column X.
 3. Compare the Nano labels with the drawing. D5, D4, D3 and GND must be in holes Q11, P11, O11 and M11.
 4. Turn the board over to the pad side. Column A is now at the left. Solder the Nano pins.
 5. Put in the resistors and the two car wires from the bare side. Bend their legs on the pad side, so they stay in.
 6. Solder their legs. Then make every solder trail of the copper-side view.
-7. For a trail of two or three pads, bridge the neighbouring pads with solder.
+7. For a short trail of up to four pads, bridge the neighbouring pads with solder.
 8. For the longer trails in row 05 and column M, lay a bare wire across the pads. Solder it at every pad.
 9. Check the trails in columns O, P and Q next to the Nano. They are close, and must not touch each other.
 10. Wire the plug: the pin 1 wire to pin 1, the pin 12 wire to pin 12.
